@@ -4,9 +4,17 @@ interface WordTowerProps {
   words: Record<string, number>;
 }
 
-// Placeholder positive words to fill the tower
+// Lots of positive filler words
+const FILLER_WORDS = [
+  "свет", "мир", "путь", "дар", "лад", "дух", "ритм", "шаг", "жар", "миг",
+  "тон", "луч", "вид", "час", "дом", "сон", "ход", "зов", "рай", "бег",
+  "жизнь", "вера", "воля", "тепло", "суть", "связь", "явь", "лик", "нрав",
+  "след", "блик", "рост", "толк", "пыл", "взлёт", "клад", "край", "старт",
+  "смысл", "честь", "труд", "плод", "весть", "блеск", "гимн", "знак", "круг",
+];
+
 const PLACEHOLDER_WORDS: Record<string, number> = {
-  "люди": 20, "успех": 18, "команда": 16, "рост": 15, "доверие": 14,
+  "люди": 22, "успех": 18, "команда": 17, "рост": 15, "доверие": 14,
   "будущее": 13, "опыт": 12, "развитие": 11, "инновации": 10, "победа": 9,
   "мечта": 8, "сила": 8, "радость": 7, "знания": 7, "энергия": 7,
   "дружба": 6, "вдохновение": 6, "гармония": 6, "свобода": 5, "любовь": 5,
@@ -16,34 +24,42 @@ const PLACEHOLDER_WORDS: Record<string, number> = {
   "солнце": 2, "мир": 2, "душа": 1, "искра": 1, "рассвет": 1,
 };
 
-// Tower silhouette profile: returns width factor (0-1) for a given vertical position (0=top, 1=bottom)
-// Shape: thin spire → bulge → thin neck → wide base
+// Smooth tower profile using bezier-like curves
+// Returns width factor 0-1 for vertical position t (0=top, 1=bottom)
 function towerProfile(t: number): number {
-  if (t < 0.15) {
-    // Thin spire tip
-    return 0.05 + t * 0.8;
-  } else if (t < 0.35) {
-    // Widening to bulge
-    const local = (t - 0.15) / 0.2;
-    return 0.17 + local * 0.45;
-  } else if (t < 0.5) {
-    // Bulge peak
-    const local = (t - 0.35) / 0.15;
-    return 0.62 - local * 0.3;
-  } else if (t < 0.65) {
-    // Narrow neck
-    const local = (t - 0.5) / 0.15;
-    return 0.32 + local * 0.05;
-  } else {
-    // Wide base expanding
-    const local = (t - 0.65) / 0.35;
-    return 0.37 + local * 0.63;
+  // Spire: very thin at top, gradually widening
+  if (t < 0.12) {
+    const s = t / 0.12;
+    return 0.03 + s * s * 0.09; // quadratic ease-in
   }
+  // Upper body: smooth widening  
+  if (t < 0.30) {
+    const s = (t - 0.12) / 0.18;
+    return 0.12 + s * 0.38;
+  }
+  // Observation deck bulge
+  if (t < 0.42) {
+    const s = (t - 0.30) / 0.12;
+    const bulge = Math.sin(s * Math.PI);
+    return 0.50 + bulge * 0.12;
+  }
+  // Neck: narrowing smoothly
+  if (t < 0.55) {
+    const s = (t - 0.42) / 0.13;
+    return 0.50 - s * 0.15;
+  }
+  // Lower body: smooth expansion to base
+  const s = (t - 0.55) / 0.45;
+  return 0.35 + s * s * 0.65; // quadratic ease-in for smooth flare
+}
+
+function measureWord(word: string, fontSize: number): number {
+  return word.length * fontSize * 0.52 + 4;
 }
 
 const WordTower = ({ words }: WordTowerProps) => {
   const tower = useMemo(() => {
-    // Merge user words with placeholders (user words override)
+    // Merge user words with placeholders
     const merged = { ...PLACEHOLDER_WORDS };
     for (const [w, c] of Object.entries(words)) {
       merged[w] = (merged[w] || 0) + c;
@@ -55,80 +71,105 @@ const WordTower = ({ words }: WordTowerProps) => {
     const maxCount = Math.max(...entries.map(([, c]) => c));
     const minCount = Math.min(...entries.map(([, c]) => c));
 
-    const sized = entries.map(([word, count]) => {
+    type SizedWord = { word: string; count: number; fontSize: number; ratio: number; isUser: boolean; isFiller: boolean };
+
+    const sized: SizedWord[] = entries.map(([word, count]) => {
       const ratio = maxCount === minCount ? 0.5 : (count - minCount) / (maxCount - minCount);
-      const fontSize = 11 + ratio * 45;
-      return { word, count, fontSize, ratio, isUser: word in words };
+      const fontSize = 10 + ratio * 48;
+      return { word, count, fontSize, ratio, isUser: word in words, isFiller: false };
     });
 
-    // Sort by size ascending — small words first (top of tower)
+    // Sort ascending by font size
     sized.sort((a, b) => a.fontSize - b.fontSize);
 
-    // Build rows following tower silhouette
-    const maxWidth = 500;
-    const totalRowTarget = 30;
-    const rows: { words: typeof sized }[] = [];
-    let wordIndex = 0;
+    // Build rows
+    const maxWidth = 550;
+    const numRows = 35;
+    const rows: { words: SizedWord[]; targetWidth: number; rowT: number }[] = [];
 
-    for (let r = 0; r < totalRowTarget && wordIndex < sized.length; r++) {
-      const t = r / (totalRowTarget - 1);
+    for (let r = 0; r < numRows; r++) {
+      const t = r / (numRows - 1);
       const widthFactor = towerProfile(t);
-      const rowWidth = Math.max(50, widthFactor * maxWidth);
+      rows.push({ words: [], targetWidth: Math.max(30, widthFactor * maxWidth), rowT: t });
+    }
 
-      const row: typeof sized = [];
+    // Assign words to rows: small words → top (narrow), big words → bottom (wide)
+    // But we need to respect the width constraint
+    let wordIdx = 0;
+    for (let r = 0; r < numRows && wordIdx < sized.length; r++) {
       let usedWidth = 0;
+      const rowW = rows[r].targetWidth;
 
-      while (wordIndex < sized.length) {
-        const w = sized[wordIndex];
-        const estWidth = w.word.length * w.fontSize * 0.52 + 6;
-        if (usedWidth + estWidth <= rowWidth || row.length === 0) {
-          row.push(w);
-          usedWidth += estWidth;
-          wordIndex++;
+      while (wordIdx < sized.length) {
+        const w = sized[wordIdx];
+        // Clamp font size so word fits in row
+        const maxFontForRow = rowW / (w.word.length * 0.52 + 0.5);
+        const clampedSize = Math.min(w.fontSize, maxFontForRow);
+        const estW = measureWord(w.word, clampedSize);
+
+        if (usedWidth + estW <= rowW + 2 || rows[r].words.length === 0) {
+          rows[r].words.push({ ...w, fontSize: clampedSize });
+          usedWidth += estW;
+          wordIdx++;
         } else {
           break;
         }
       }
-      rows.push({ words: row });
     }
 
-    // Remaining words into extra rows at the base
-    while (wordIndex < sized.length) {
-      const row: typeof sized = [];
-      let usedWidth = 0;
-      while (wordIndex < sized.length) {
-        const w = sized[wordIndex];
-        const estWidth = w.word.length * w.fontSize * 0.52 + 6;
-        if (usedWidth + estWidth <= maxWidth || row.length === 0) {
-          row.push(w);
-          usedWidth += estWidth;
-          wordIndex++;
-        } else break;
+    // Put remaining into last rows
+    while (wordIdx < sized.length) {
+      const lastRow = rows[rows.length - 1];
+      lastRow.words.push(sized[wordIdx]);
+      wordIdx++;
+    }
+
+    // Fill empty gaps with small filler words
+    let fillerIdx = 0;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      let usedWidth = row.words.reduce((sum, w) => sum + measureWord(w.word, w.fontSize), 0);
+      const gap = row.targetWidth - usedWidth;
+
+      if (gap > 20 && row.words.length > 0) {
+        // Try to fill with small words
+        let attempts = 0;
+        while (usedWidth < row.targetWidth - 8 && attempts < 15) {
+          const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
+          fillerIdx++;
+          const fillerSize = 8 + Math.random() * 4;
+          const fw = measureWord(filler, fillerSize);
+          if (usedWidth + fw <= row.targetWidth + 2) {
+            row.words.push({
+              word: filler,
+              count: 0,
+              fontSize: fillerSize,
+              ratio: 0,
+              isUser: false,
+              isFiller: true,
+            });
+            usedWidth += fw;
+          }
+          attempts++;
+        }
       }
-      rows.push({ words: row });
     }
 
-    return rows;
+    return rows.filter(r => r.words.length > 0);
   }, [words]);
 
-  // Generate SVG silhouette path points
+  // SVG silhouette
   const silhouettePath = useMemo(() => {
-    const height = 700;
-    const centerX = 250;
-    const maxHalfWidth = 250;
-    const steps = 60;
-    const leftPoints: string[] = [];
-    const rightPoints: string[] = [];
-
+    const h = 700, cx = 250, hw = 250, steps = 80;
+    const left: string[] = [], right: string[] = [];
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const y = t * height;
-      const halfW = towerProfile(t) * maxHalfWidth;
-      leftPoints.push(`${centerX - halfW},${y}`);
-      rightPoints.unshift(`${centerX + halfW},${y}`);
+      const y = t * h;
+      const w = towerProfile(t) * hw;
+      left.push(`${cx - w},${y}`);
+      right.unshift(`${cx + w},${y}`);
     }
-
-    return `M ${leftPoints.join(" L ")} L ${rightPoints.join(" L ")} Z`;
+    return `M ${left.join(" L ")} L ${right.join(" L ")} Z`;
   }, []);
 
   if (tower.length === 0) {
@@ -140,48 +181,44 @@ const WordTower = ({ words }: WordTowerProps) => {
   }
 
   return (
-    <div className="relative flex flex-col items-center gap-0 py-8 select-none">
-      {/* SVG silhouette behind words */}
+    <div className="relative flex flex-col items-center py-8 select-none">
+      {/* Faint silhouette guide */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-40"
         viewBox="0 0 500 700"
         preserveAspectRatio="xMidYMid meet"
         style={{ top: '32px' }}
       >
-        <path
-          d={silhouettePath}
-          fill="none"
-          stroke="hsl(35 80% 50% / 0.12)"
-          strokeWidth="1.5"
-        />
-        {/* Faint inner glow line */}
-        <path
-          d={silhouettePath}
-          fill="hsl(35 80% 50% / 0.03)"
-          stroke="none"
-        />
+        <path d={silhouettePath} fill="none" stroke="hsl(35 80% 40% / 0.08)" strokeWidth="1" />
       </svg>
 
       {/* Words */}
-      <div className="relative z-10 flex flex-col items-center gap-0">
+      <div className="relative z-10 flex flex-col items-center" style={{ gap: '1px' }}>
         {tower.map((row, ri) => (
           <div
             key={ri}
-            className="flex items-baseline justify-center flex-nowrap"
-            style={{ gap: "3px", lineHeight: 1.15 }}
+            className="flex items-baseline justify-center flex-nowrap overflow-hidden"
+            style={{
+              gap: "2px",
+              lineHeight: 1.1,
+              maxWidth: `${row.targetWidth}px`,
+            }}
           >
             {row.words.map((w, wi) => (
               <span
-                key={`${w.word}-${wi}`}
-                className="whitespace-nowrap leading-tight"
+                key={`${w.word}-${ri}-${wi}`}
+                className="whitespace-nowrap"
                 style={{
                   fontSize: `${w.fontSize}px`,
-                  color: `hsl(${30 + w.ratio * 15}, ${80 + w.ratio * 15}%, ${42 + w.ratio * 33}%)`,
-                  textShadow: w.ratio > 0.4
-                    ? `0 0 ${w.ratio * 15}px hsl(35 95% 55% / 0.4)`
+                  color: w.isFiller
+                    ? `hsl(30, 50%, 35%)`
+                    : `hsl(${30 + w.ratio * 15}, ${80 + w.ratio * 15}%, ${42 + w.ratio * 33}%)`,
+                  textShadow: !w.isFiller && w.ratio > 0.4
+                    ? `0 0 ${w.ratio * 12}px hsl(35 95% 55% / 0.3)`
                     : "none",
-                  fontWeight: w.ratio > 0.6 ? 900 : w.ratio > 0.3 ? 700 : 600,
-                  opacity: w.isUser ? 1 : 0.7,
+                  fontWeight: w.isFiller ? 400 : (w.ratio > 0.6 ? 900 : w.ratio > 0.3 ? 700 : 600),
+                  opacity: w.isFiller ? 0.35 : (w.isUser ? 1 : 0.75),
+                  lineHeight: 1.05,
                 }}
               >
                 {w.word}
