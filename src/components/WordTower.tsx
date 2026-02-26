@@ -12,53 +12,45 @@ const WordTower = ({ words }: WordTowerProps) => {
     const maxCount = Math.max(...entries.map(([, c]) => c));
     const minCount = Math.min(...entries.map(([, c]) => c));
 
-    // Map each word to a size (font size in px)
     const sized = entries.map(([word, count]) => {
       const ratio = maxCount === minCount ? 0.5 : (count - minCount) / (maxCount - minCount);
-      const fontSize = 14 + ratio * 48; // 14px to 62px
+      const fontSize = 10 + ratio * 50; // 10px to 60px
       return { word, count, fontSize, ratio };
     });
 
-    // Sort: largest words in the middle/bottom, smallest at top
+    // Sort by frequency descending — big words go to bottom
     sized.sort((a, b) => a.fontSize - b.fontSize);
 
-    // Build rows that fit within a tower silhouette
-    // Tower: narrow at top, wide at bottom
-    const totalRows = Math.max(8, Math.ceil(sized.length / 3));
-    const rows: { words: typeof sized; maxWidth: number; rowIndex: number }[] = [];
-
-    // Create tower width profile
-    for (let i = 0; i < totalRows; i++) {
-      const t = i / (totalRows - 1 || 1); // 0 = top, 1 = bottom
-      // Tower shape: narrow top, wide bottom with a spire
-      const width = 80 + t * 600; // px width budget
-      rows.push({ words: [], maxWidth: width, rowIndex: i });
-    }
-
-    // Place words into rows, smallest first (top rows)
+    // Greedy row packing with tower-shaped width constraint
+    const rows: { words: typeof sized; }[] = [];
     let wordIndex = 0;
-    for (let r = 0; r < rows.length && wordIndex < sized.length; r++) {
+    const containerWidth = 700; // max width at bottom
+
+    while (wordIndex < sized.length) {
+      const rowNum = rows.length;
+      // Tower profile: starts very narrow, expands
+      // Use a power curve for spire-like shape
+      const progress = Math.min(rowNum / 25, 1);
+      const rowWidth = 60 + progress * progress * (containerWidth - 60);
+
+      const row: typeof sized = [];
       let usedWidth = 0;
+
       while (wordIndex < sized.length) {
         const w = sized[wordIndex];
-        const estimatedWidth = w.word.length * w.fontSize * 0.6 + 12;
-        if (usedWidth + estimatedWidth <= rows[r].maxWidth || rows[r].words.length === 0) {
-          rows[r].words.push(w);
-          usedWidth += estimatedWidth;
+        const estWidth = w.word.length * w.fontSize * 0.55 + 8;
+        if (usedWidth + estWidth <= rowWidth || row.length === 0) {
+          row.push(w);
+          usedWidth += estWidth;
           wordIndex++;
         } else {
           break;
         }
       }
+      rows.push({ words: row });
     }
 
-    // Put remaining words in last row
-    while (wordIndex < sized.length) {
-      rows[rows.length - 1].words.push(sized[wordIndex]);
-      wordIndex++;
-    }
-
-    return rows.filter(r => r.words.length > 0);
+    return rows;
   }, [words]);
 
   if (tower.length === 0) {
@@ -70,17 +62,17 @@ const WordTower = ({ words }: WordTowerProps) => {
   }
 
   return (
-    <div className="flex flex-col items-center gap-0.5 py-8 select-none">
+    <div className="flex flex-col items-center gap-0 py-8 select-none">
       {tower.map((row, ri) => (
-        <div key={ri} className="flex items-baseline justify-center gap-1 flex-nowrap">
+        <div key={ri} className="flex items-baseline justify-center flex-nowrap" style={{ gap: '4px', lineHeight: 1.1 }}>
           {row.words.map((w, wi) => (
             <span
               key={`${w.word}-${wi}`}
-              className="whitespace-nowrap font-bold leading-none transition-all duration-300"
+              className="whitespace-nowrap leading-tight"
               style={{
                 fontSize: `${w.fontSize}px`,
-                color: `hsl(${30 + w.ratio * 15}, ${80 + w.ratio * 15}%, ${50 + w.ratio * 25}%)`,
-                textShadow: w.ratio > 0.5 ? `0 0 ${w.ratio * 20}px hsl(var(--tower-glow) / 0.3)` : 'none',
+                color: `hsl(${30 + w.ratio * 15}, ${80 + w.ratio * 15}%, ${45 + w.ratio * 30}%)`,
+                textShadow: w.ratio > 0.5 ? `0 0 ${w.ratio * 20}px hsl(35 95% 55% / 0.3)` : 'none',
                 fontWeight: w.ratio > 0.6 ? 900 : w.ratio > 0.3 ? 700 : 600,
               }}
             >
