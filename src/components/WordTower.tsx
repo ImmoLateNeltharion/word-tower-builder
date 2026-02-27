@@ -11,6 +11,11 @@ const FILLER_WORDS = [
   "жизнь", "вера", "воля", "тепло", "суть", "связь", "явь", "лик", "нрав",
   "след", "блик", "рост", "толк", "пыл", "взлёт", "клад", "край", "старт",
   "смысл", "честь", "труд", "плод", "весть", "блеск", "гимн", "знак", "круг",
+  "ум", "да", "ок", "мы", "ты", "он", "я", "до", "по", "за",
+  "огонь", "нота", "тень", "дождь", "ветер", "река", "заря", "пик", "код",
+  "сад", "лес", "день", "ночь", "год", "век", "мост", "порт", "центр",
+  "глаз", "рука", "ум", "лёд", "гром", "штиль", "нить", "стиль", "ключ",
+  "роль", "факт", "темп", "план", "курс", "фон", "цвет", "форма", "точка",
 ];
 
 const PLACEHOLDER_WORDS: Record<string, number> = {
@@ -27,30 +32,30 @@ const PLACEHOLDER_WORDS: Record<string, number> = {
 // Smooth tower profile using bezier-like curves
 // Returns width factor 0-1 for vertical position t (0=top, 1=bottom)
 function towerProfile(t: number): number {
-  // Spire: very thin at top, gradually widening
-  if (t < 0.12) {
-    const s = t / 0.12;
-    return 0.03 + s * s * 0.09; // quadratic ease-in
+  // Spire: very thin at top
+  if (t < 0.15) {
+    const s = t / 0.15;
+    return 0.02 + s * s * 0.08;
   }
-  // Upper body: smooth widening  
-  if (t < 0.30) {
-    const s = (t - 0.12) / 0.18;
-    return 0.12 + s * 0.38;
+  // Upper body: gradual widening
+  if (t < 0.35) {
+    const s = (t - 0.15) / 0.20;
+    return 0.10 + s * 0.30;
   }
   // Observation deck bulge
-  if (t < 0.42) {
-    const s = (t - 0.30) / 0.12;
+  if (t < 0.45) {
+    const s = (t - 0.35) / 0.10;
     const bulge = Math.sin(s * Math.PI);
-    return 0.50 + bulge * 0.12;
+    return 0.40 + bulge * 0.10;
   }
-  // Neck: narrowing smoothly
+  // Neck: narrowing
   if (t < 0.55) {
-    const s = (t - 0.42) / 0.13;
-    return 0.50 - s * 0.15;
+    const s = (t - 0.45) / 0.10;
+    return 0.40 - s * 0.12;
   }
   // Lower body: smooth expansion to base
   const s = (t - 0.55) / 0.45;
-  return 0.35 + s * s * 0.65; // quadratic ease-in for smooth flare
+  return 0.28 + s * s * 0.72;
 }
 
 function measureWord(word: string, fontSize: number): number {
@@ -83,8 +88,8 @@ const WordTower = ({ words }: WordTowerProps) => {
     sized.sort((a, b) => a.fontSize - b.fontSize);
 
     // Build rows
-    const maxWidth = 420;
-    const numRows = 50;
+    const maxWidth = 380;
+    const numRows = 65;
     const rows: { words: SizedWord[]; targetWidth: number; rowT: number }[] = [];
 
     for (let r = 0; r < numRows; r++) {
@@ -131,10 +136,10 @@ const WordTower = ({ words }: WordTowerProps) => {
       let usedWidth = row.words.reduce((sum, w) => sum + measureWord(w.word, w.fontSize), 0);
       const gap = row.targetWidth - usedWidth;
 
-      if (gap > 20 && row.words.length > 0) {
+      if (gap > 8 && row.words.length > 0) {
         // Try to fill with small words
         let attempts = 0;
-        while (usedWidth < row.targetWidth - 8 && attempts < 15) {
+        while (usedWidth < row.targetWidth - 3 && attempts < 30) {
           const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
           fillerIdx++;
           const fillerSize = 8 + Math.random() * 4;
