@@ -83,8 +83,8 @@ const WordTower = ({ words }: WordTowerProps) => {
     sized.sort((a, b) => a.fontSize - b.fontSize);
 
     // Build rows
-    const maxWidth = 550;
-    const numRows = 35;
+    const maxWidth = 420;
+    const numRows = 50;
     const rows: { words: SizedWord[]; targetWidth: number; rowT: number }[] = [];
 
     for (let r = 0; r < numRows; r++) {
