@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 
 interface WordTowerProps {
   words: Record<string, number>;
@@ -31,26 +31,28 @@ const PLACEHOLDER_WORDS: Record<string, number> = {
 };
 
 // Tower silhouette profile: t=0 top, t=1 bottom. Returns half-width factor 0..1
+// Namsan Tower shape: antenna tip → observation deck bulge → narrow shaft → wider base
 function towerProfile(t: number): number {
-  if (t < 0.12) {
-    const s = t / 0.12;
-    return 0.015 + s * s * 0.055;
+  if (t < 0.03) return 0.02;                          // thin antenna tip
+  if (t < 0.08) {
+    const s = (t - 0.03) / 0.05;
+    return 0.02 + s * 0.33;                           // 0.02 → 0.35 (expand to observation deck)
+  }
+  if (t < 0.20) {
+    const s = (t - 0.08) / 0.12;
+    const bulge = Math.sin(s * Math.PI);
+    return 0.35 + bulge * 0.10;                       // 0.35 → 0.45 peak → 0.35 (observation deck)
   }
   if (t < 0.30) {
-    const s = (t - 0.12) / 0.18;
-    return 0.07 + s * 0.28;
+    const s = (t - 0.20) / 0.10;
+    return 0.35 - s * 0.10;                           // 0.35 → 0.25 (narrow to shaft)
   }
-  if (t < 0.40) {
-    const s = (t - 0.30) / 0.10;
-    const bulge = Math.sin(s * Math.PI);
-    return 0.35 + bulge * 0.08;
+  if (t < 0.80) {
+    const s = (t - 0.30) / 0.50;
+    return 0.25 + s * 0.05;                           // 0.25 → 0.30 (long narrow shaft)
   }
-  if (t < 0.52) {
-    const s = (t - 0.40) / 0.12;
-    return 0.35 - s * 0.10;
-  }
-  const s = (t - 0.52) / 0.48;
-  return 0.25 + s * s * 0.75;
+  const s = (t - 0.80) / 0.20;
+  return 0.30 + s * s * 0.40;                         // 0.30 → 0.70 (base widens)
 }
 
 function measureWord(word: string, fontSize: number): number {
@@ -63,7 +65,7 @@ type PlacedWord = {
   ratio: number;
   isUser: boolean;
   isFiller: boolean;
-  x: number; // center x position
+  x: number;
 };
 
 type TowerRow = {
@@ -74,7 +76,29 @@ type TowerRow = {
 };
 
 const WordTower = ({ words }: WordTowerProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(700);
+  const [containerHeight, setContainerHeight] = useState(600);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0) setContainerWidth(Math.floor(width));
+      if (height > 0) setContainerHeight(Math.floor(height));
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const tower = useMemo(() => {
+    const maxFontByWidth = containerWidth * 0.124;
+    const maxFontByHeight = containerHeight / 22;
+    const maxFontSize = Math.max(11, Math.min(maxFontByWidth, maxFontByHeight, 240));
+    const minFontSize = Math.max(9, containerWidth * 0.014);
+    const numRows = 15;
+
     const merged = { ...PLACEHOLDER_WORDS };
     for (const [w, c] of Object.entries(words)) {
       merged[w] = (merged[w] || 0) + c;
@@ -90,24 +114,22 @@ const WordTower = ({ words }: WordTowerProps) => {
 
     const allWords: WordEntry[] = entries.map(([word, count]) => {
       const ratio = maxCount === minCount ? 0.5 : (count - minCount) / (maxCount - minCount);
-      const fontSize = 11 + ratio * 52;
+      const fontSize = minFontSize + ratio * (maxFontSize - minFontSize);
       return { word, count, fontSize, ratio, isUser: word in words };
     });
 
-    // Sort descending by count — big words first
     allWords.sort((a, b) => b.count - a.count);
 
-    const containerWidth = 420;
-    const numRows = 55;
-    const rows: TowerRow[] = [];
+    // Cap tower layout width so it doesn't stretch too wide on big screens
+    const towerWidth = Math.min(containerWidth, 420);
 
+    const rows: TowerRow[] = [];
     for (let r = 0; r < numRows; r++) {
       const t = r / (numRows - 1);
-      const w = towerProfile(t) * containerWidth;
+      const w = towerProfile(t) * towerWidth;
       rows.push({ placedWords: [], targetWidth: Math.max(20, w), rowT: t, height: 0 });
     }
 
-    // Distribute words evenly: score by fill ratio (prefer least-filled rows)
     let zigzag = 0;
     const usedWidths = new Array(numRows).fill(0);
 
@@ -123,10 +145,9 @@ const WordTower = ({ words }: WordTowerProps) => {
         const wordW = measureWord(entry.word, clampedSize);
 
         if (usedWidths[r] + wordW <= row.targetWidth + 4) {
-          const fillRatio = usedWidths[r] / row.targetWidth; // 0 = empty, 1 = full
-          const sizeRatio = clampedSize / entry.fontSize; // 1 = no clamping
-          // Strongly prefer empty rows, also prefer rows where word fits at full size
-          const score = sizeRatio * 50 + (1 - fillRatio) * 80;
+          const fillRatio = usedWidths[r] / row.targetWidth;
+          const sizeRatio = clampedSize / entry.fontSize;
+          const score = sizeRatio * 80 + (1 - fillRatio) * 20;
           if (score > bestScore) {
             bestScore = score;
             bestRow = r;
@@ -164,7 +185,10 @@ const WordTower = ({ words }: WordTowerProps) => {
     }
 
     // Fill remaining space with filler words
+    const fillerMinSize = Math.max(7, containerWidth * 0.008);
+    const fillerMaxSize = fillerMinSize + Math.max(3, containerWidth * 0.004);
     let fillerIdx = 0;
+
     for (let r = 0; r < numRows; r++) {
       const row = rows[r];
       let used = usedWidths[r];
@@ -173,18 +197,13 @@ const WordTower = ({ words }: WordTowerProps) => {
       while (used < row.targetWidth - 4 && attempts < 50) {
         const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
         fillerIdx++;
-        const fillerSize = 7 + Math.random() * 4;
+        const fillerSize = fillerMinSize + Math.random() * (fillerMaxSize - fillerMinSize);
         const fw = measureWord(filler, fillerSize);
 
         if (used + fw <= row.targetWidth + 2) {
-          // Place filler on whichever side has more space
           row.placedWords.push({
-            word: filler,
-            fontSize: fillerSize,
-            ratio: 0,
-            isUser: false,
-            isFiller: true,
-            x: 0,
+            word: filler, fontSize: fillerSize, ratio: 0,
+            isUser: false, isFiller: true, x: 0,
           });
           used += fw;
           if (row.height === 0) row.height = fillerSize * 1.2;
@@ -194,7 +213,6 @@ const WordTower = ({ words }: WordTowerProps) => {
       usedWidths[r] = used;
     }
 
-    // Also fill empty rows with only fillers
     for (let r = 0; r < numRows; r++) {
       const row = rows[r];
       if (row.placedWords.length === 0 && row.targetWidth > 15) {
@@ -203,7 +221,7 @@ const WordTower = ({ words }: WordTowerProps) => {
         while (used < row.targetWidth - 4 && attempts < 40) {
           const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
           fillerIdx++;
-          const fillerSize = 7 + Math.random() * 3;
+          const fillerSize = fillerMinSize + Math.random() * (fillerMaxSize - fillerMinSize) * 0.7;
           const fw = measureWord(filler, fillerSize);
           if (used + fw <= row.targetWidth + 2) {
             row.placedWords.push({
@@ -219,11 +237,14 @@ const WordTower = ({ words }: WordTowerProps) => {
     }
 
     return rows.filter(r => r.placedWords.length > 0);
-  }, [words]);
+  }, [words, containerWidth, containerHeight]);
 
-  // SVG silhouette for glow
-  const silhouettePath = useMemo(() => {
-    const h = 700, cx = 250, hw = 250, steps = 80;
+  const { silhouettePath, svgHeight } = useMemo(() => {
+    const cw = Math.min(containerWidth, 420);
+    const h = cw * 1.1;
+    const cx = cw / 2;
+    const hw = cw / 2;
+    const steps = 80;
     const left: string[] = [], right: string[] = [];
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
@@ -232,31 +253,41 @@ const WordTower = ({ words }: WordTowerProps) => {
       left.push(`${cx - w},${y}`);
       right.unshift(`${cx + w},${y}`);
     }
-    return `M ${left.join(" L ")} L ${right.join(" L ")} Z`;
-  }, []);
+    return {
+      silhouettePath: `M ${left.join(" L ")} L ${right.join(" L ")} Z`,
+      svgHeight: h,
+    };
+  }, [containerWidth]);
 
   if (tower.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center py-20">
         <p className="text-muted-foreground text-lg">Введите слово, чтобы начать строить башню</p>
       </div>
     );
   }
 
   return (
-    <div className="relative flex flex-col items-center py-8 select-none">
-      {/* Blurred glow silhouette */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        viewBox="0 0 500 700"
-        preserveAspectRatio="xMidYMid meet"
-        style={{ top: '32px', opacity: 0.25, filter: 'blur(25px)' }}
-      >
-        <path d={silhouettePath} fill="hsl(35 70% 40%)" stroke="none" />
-      </svg>
-
-      {/* Word rows */}
-      <div className="relative z-10 flex flex-col items-center" style={{ gap: '0px' }}>
+    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-center py-8 select-none">
+      {/* Word rows with glow behind */}
+      <div className="relative flex flex-col items-center" style={{ gap: '0px' }}>
+        {/* Blurred glow silhouette behind the tower */}
+        <svg
+          className="absolute pointer-events-none"
+          viewBox={`0 0 ${Math.min(containerWidth, 420)} ${svgHeight}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${Math.min(containerWidth, 420)}px`,
+            height: `${svgHeight}px`,
+            opacity: 0.3,
+            filter: 'blur(30px)',
+          }}
+        >
+          <path d={silhouettePath} fill="hsl(35 70% 40%)" stroke="none" />
+        </svg>
         {tower.map((row, ri) => (
           <div
             key={ri}
