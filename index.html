@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Tower</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold-1: #f7b731;
+      --gold-2: #e8961a;
+      --gold-3: #c97c20;
+      --gold-4: #96591a;
+      --gold-5: #6b3e14;
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% 30%, #1c1508 0%, #0a0804 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', 'Arial Black', Arial, sans-serif;
+      overflow-x: hidden;
+      padding: 48px 24px 72px;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 44px;
+    }
+
+    .header h1 {
+      color: #fff;
+      font-size: clamp(15px, 2vw, 23px);
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      opacity: 0.9;
+    }
+
+    .header .sub {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #665540;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-family: Arial, sans-serif;
+    }
+
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--gold-1);
+      flex-shrink: 0;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(247,183,49,.4); }
+      50%       { opacity: .5; box-shadow: 0 0 0 5px rgba(247,183,49,0); }
+    }
+
+    /* ── CLOUD ── */
+    #cloud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      width: 100%;
+      max-width: 1040px;
+    }
+
+    .cloud-row {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── WORDS ── */
+    .word {
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: default;
+      user-select: none;
+      display: inline-block;
+      opacity: 0;
+      animation: appear .55s cubic-bezier(.22,1,.36,1) forwards;
+      transition: filter .2s ease, transform .2s ease;
+    }
+
+    .word:hover {
+      filter: brightness(1.55) drop-shadow(0 0 10px currentColor);
+      transform: scale(1.1);
+      z-index: 10;
+      position: relative;
+    }
+
+    /* Size-based letter spacing: big words get slightly tighter */
+    .word[data-big="1"] { letter-spacing: -0.02em; }
+
+    .tier-1 { color: var(--gold-1); }
+    .tier-2 { color: var(--gold-2); }
+    .tier-3 { color: var(--gold-3); }
+    .tier-4 { color: var(--gold-4); }
+    .tier-5 { color: var(--gold-5); }
+
+    @keyframes appear {
+      from { opacity: 0; transform: scale(.88) translateY(6px); }
+      to   { opacity: 1; transform: scale(1)  translateY(0); }
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      margin-top: 56px;
+      color: #3a2a18;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Одним словом: что для вас это событие?</h1>
+    <div class="sub">
+      <span class="live-dot"></span>
+      <span>Слова добавляются в реальном времени</span>
+    </div>
+  </div>
+
+  <div id="cloud"></div>
+
+  <div class="footer">Open House &middot; Powered by Live Bot</div>
+
+<script>
+// ─────────────────────────────────────────
+// DEMO DATA  (заменяется данными от бота)
+// ─────────────────────────────────────────
+const WORDS_DATA = [
+  { text: "Сеул",         count: 52 },
+  { text: "люди",         count: 47 },
+  { text: "рост",         count: 44 },
+  { text: "инновации",    count: 41 },
+  { text: "партнёры",     count: 32 },
+  { text: "доверие",      count: 31 },
+  { text: "команда",      count: 30 },
+  { text: "возможности",  count: 29 },
+  { text: "развитие",     count: 28 },
+  { text: "событие",      count: 24 },
+  { text: "Корея",        count: 23 },
+  { text: "опыт",         count: 22 },
+  { text: "обучение",     count: 21 },
+  { text: "конференция",  count: 20 },
+  { text: "будущее",      count: 19 },
+  { text: "технологии",   count: 18 },
+  { text: "семья",        count: 17 },
+  { text: "качество",     count: 16 },
+  { text: "здоровье",     count: 16 },
+  { text: "вдохновение",  count: 15 },
+  { text: "знания",       count: 14 },
+  { text: "эмоции",       count: 14 },
+  { text: "мечта",        count: 13 },
+  { text: "поездка",      count: 13 },
+  { text: "энергия",      count: 12 },
+  { text: "цифровизация", count: 12 },
+  { text: "лидерство",    count: 11 },
+  { text: "результат",    count: 11 },
+  { text: "культура",     count: 10 },
+  { text: "гордость",     count: 10 },
+  { text: "наука",        count: 9  },
+  { text: "прогресс",     count: 9  },
+  { text: "соревнование", count: 8  },
+  { text: "дружба",       count: 8  },
+  { text: "открытия",     count: 7  },
+  { text: "успех",        count: 7  },
+  { text: "пациенты",     count: 7  },
+  { text: "мотивация",    count: 6  },
+  { text: "улыбка",       count: 6  },
+  { text: "клиника",      count: 6  },
+  { text: "сервис",       count: 5  },
+  { text: "продукт",      count: 5  },
+  { text: "поддержка",    count: 5  },
+  { text: "визит",        count: 4  },
+  { text: "прорыв",       count: 4  },
+  { text: "перспектива",  count: 3  },
+];
+
+// ─────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────
+const CFG = {
+  minFont:  12,
+  maxFont:  112,
+  wordGap:  12,   // px gap between words in a row
+  // Tower shape: fraction of container width for row at position frac (0=top, 1=bottom)
+  profile: frac => 0.32 + 0.68 * Math.pow(frac, 0.48),
+};
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function containerWidth() {
+  const el = document.getElementById('cloud');
+  return el.getBoundingClientRect().width || Math.min(1040, window.innerWidth - 48);
+}
+
+function measureWords(items) {
+  const m = document.createElement('span');
+  m.style.cssText =
+    'position:fixed;top:-9999px;left:0;visibility:hidden;white-space:nowrap;' +
+    'font-family:"Montserrat","Arial Black",Arial,sans-serif;font-weight:900;';
+  document.body.appendChild(m);
+  items.forEach(item => {
+    m.style.fontSize = item.fs + 'px';
+    m.textContent = item.text;
+    item.pw = m.offsetWidth; // pixel width
+  });
+  document.body.removeChild(m);
+}
+
+// ─────────────────────────────────────────
+// SEQUENTIAL ROW PACKER
+// Words are placed in order (no skipping).
+// budgetFn(rowIndex) → pixel budget for that row.
+// ─────────────────────────────────────────
+function packSequential(items, budgetFn) {
+  const rows = [];
+  let row = [], rowW = 0, ri = 0;
+
+  for (const item of items) {
+    const gap  = row.length > 0 ? CFG.wordGap : 0;
+    const need = item.pw + gap;
+    const max  = budgetFn(ri);
+
+    if (row.length > 0 && rowW + need > max) {
+      rows.push(row);
+      ri++;
+      row  = [item];
+      rowW = item.pw;
+    } else {
+      row.push(item);
+      rowW += need;
+    }
+  }
+  if (row.length) rows.push(row);
+  return rows;
+}
+
+// ─────────────────────────────────────────
+// MAIN BUILD
+// ─────────────────────────────────────────
+function buildCloud(data) {
+  const container = document.getElementById('cloud');
+  container.innerHTML = '';
+
+  // Sort largest → smallest
+  const sorted = [...data].sort((a, b) => b.count - a.count);
+  const maxC = sorted[0].count;
+  const minC = sorted[sorted.length - 1].count;
+  const range = maxC === minC ? 1 : maxC - minC;
+
+  const fontSize = count => {
+    const t = (count - minC) / range;
+    return Math.round(CFG.minFont + (CFG.maxFont - CFG.minFont) * Math.pow(t, 0.62));
+  };
+
+  const tierClass = count => {
+    const t = (count - minC) / range;
+    if (t > 0.78) return 'tier-1';
+    if (t > 0.54) return 'tier-2';
+    if (t > 0.32) return 'tier-3';
+    if (t > 0.12) return 'tier-4';
+    return 'tier-5';
+  };
+
+  // Attach font sizes & measure
+  const items = sorted.map(w => ({ ...w, fs: fontSize(w.count), tier: tierClass(w.count) }));
+  measureWords(items);
+
+  const W = containerWidth();
+
+  // ── Two-pass pack ──
+  // Pass 1: get rough row count N using full width
+  const roughRows = packSequential(items, () => W);
+  const N = roughRows.length;
+
+  // Pass 2: pack with proper tower budgets (building bottom→top, index 0=bottom)
+  // Cap ri so it never exceeds N-1 — prevents degenerate tiny budgets
+  const rows = packSequential(items, ri => {
+    const capped = Math.min(ri, N - 1);
+    const frac   = N <= 1 ? 1 : 1 - capped / (N - 1); // 1=bottom(wide), 0=top(narrow)
+    return CFG.profile(frac) * W;
+  });
+
+  // Flip so index 0 = top (narrow)
+  rows.reverse();
+
+  const total = rows.length;
+
+  rows.forEach((row, ri) => {
+    const frac   = total > 1 ? ri / (total - 1) : 1;
+    const maxW   = Math.ceil(CFG.profile(frac) * W);
+
+    const rowEl = document.createElement('div');
+    rowEl.className = 'cloud-row';
+    rowEl.style.maxWidth = maxW + 'px';
+
+    row.forEach((item, wi) => {
+      const span = document.createElement('span');
+      span.className   = 'word ' + item.tier;
+      span.textContent = item.text;
+      span.style.fontSize = item.fs + 'px';
+      span.style.animationDelay = (ri * 0.035 + wi * 0.018) + 's';
+      if (item.fs >= 50) span.dataset.big = '1';
+      rowEl.appendChild(span);
+    });
+
+    container.appendChild(rowEl);
+  });
+}
+
+// ─────────────────────────────────────────
+// POLLING
+// ─────────────────────────────────────────
+const API_URL = null; // 'http://localhost:3001/api/words'
+let lastHash = '';
+
+async function fetchAndRender() {
+  if (!API_URL) { buildCloud(WORDS_DATA); return; }
+  try {
+    const res  = await fetch(API_URL);
+    const data = await res.json();
+    const hash = JSON.stringify(data);
+    if (hash !== lastHash) { lastHash = hash; buildCloud(data); }
+  } catch { buildCloud(WORDS_DATA); }
+}
+
+// Wait for layout before measuring
+requestAnimationFrame(() => requestAnimationFrame(fetchAndRender));
+setInterval(fetchAndRender, 5000);
+
+let rzTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(rzTimer);
+  rzTimer = setTimeout(fetchAndRender, 180);
+});
+</script>
+</body>
+</html>
