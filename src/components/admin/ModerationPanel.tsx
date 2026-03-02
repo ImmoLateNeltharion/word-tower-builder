@@ -1,84 +1,59 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Loader2, Inbox, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Plus, Loader2, Inbox, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { PLACEHOLDER_WORDS } from "@/lib/words";
-import { useStopWords } from "@/contexts/StopWordsContext";
-
-interface PendingWord {
-  id: number;
-  word: string;
-  count: number;
-  telegram_username: string | null;
-  telegram_user_id: string | null;
-  created_at: string;
-}
 
 export function ModerationPanel() {
   const queryClient = useQueryClient();
-  const { stopWords, addStopWord } = useStopWords();
-
-  // ─── Pending words ────────────────────────────────────
-  const { data: words = [], isLoading, error } = useQuery<PendingWord[]>({
-    queryKey: ["pending-words"],
-    queryFn: () => fetch("/api/words/pending").then((r) => {
-      if (r.status === 401) throw new Error("Unauthorized");
-      return r.json();
-    }),
-    refetchInterval: 5000,
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetch(`/api/words/${id}/approve`, { method: "POST" }).then((r) => {
-        if (!r.ok) throw new Error("Approve failed");
-        return r.json();
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-words"] });
-      queryClient.invalidateQueries({ queryKey: ["approved-words"] });
-      toast.success("Слово одобрено");
-    },
-    onError: () => toast.error("Ошибка при одобрении"),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetch(`/api/words/${id}/reject`, { method: "POST" }).then((r) => {
-        if (!r.ok) throw new Error("Reject failed");
-        return r.json();
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-words"] });
-      toast.success("Слово отклонено");
-    },
-    onError: () => toast.error("Ошибка при отклонении"),
-  });
+  const [input, setInput] = useState("");
 
   // ─── Approved words ───────────────────────────────────
-  const { data: approvedMap = {} } = useQuery<Record<string, number>>({
+  const { data: approvedMap = {}, isLoading } = useQuery<Record<string, number>>({
     queryKey: ["approved-words"],
     queryFn: () => fetch("/api/words/approved").then((r) => r.json()),
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (word: string) => {
-      // Delete from DB if it exists there (ignore 404)
-      if (word in approvedMap) {
-        await fetch(`/api/words/approved/${encodeURIComponent(word)}`, { method: "DELETE" });
-      }
-      // Add to stop words to also remove placeholder words
-      if (PLACEHOLDER_WORDS[word] !== undefined) {
-        addStopWord(word);
-      }
+  const wordList = Object.entries(approvedMap).sort((a, b) => b[1] - a[1]);
+
+  // ─── Add words ────────────────────────────────────────
+  const addMutation = useMutation({
+    mutationFn: (words: string) =>
+      fetch("/api/words/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words }),
+      }).then((r) => {
+        if (!r.ok) return r.json().then((e) => { throw new Error(e.error); });
+        return r.json();
+      }),
+    onSuccess: (data: { added: { word: string; count: number; isNew: boolean }[] }) => {
+      queryClient.invalidateQueries({ queryKey: ["approved-words"] });
+      setInput("");
+      const newCount = data.added.filter((w) => w.isNew).length;
+      const dupeCount = data.added.length - newCount;
+      let msg = `Добавлено: ${newCount}`;
+      if (dupeCount > 0) msg += `, повторов: ${dupeCount}`;
+      toast.success(msg);
     },
+    onError: (err: Error) => toast.error(err.message || "Ошибка"),
+  });
+
+  // ─── Delete word ──────────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: (word: string) =>
+      fetch(`/api/words/approved/${encodeURIComponent(word)}`, { method: "DELETE" }).then((r) => {
+        if (!r.ok) throw new Error("Delete failed");
+        return r.json();
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approved-words"] });
       toast.success("Слово удалено");
@@ -86,19 +61,12 @@ export function ModerationPanel() {
     onError: () => toast.error("Ошибка при удалении"),
   });
 
-  // Merge PLACEHOLDER_WORDS + approved, filter out stop words
-  const towerList = useMemo(() => {
-    const merged: Record<string, number> = { ...PLACEHOLDER_WORDS };
-    for (const [w, c] of Object.entries(approvedMap)) {
-      merged[w] = (merged[w] || 0) + c;
+  const handleAdd = () => {
+    if (input.trim()) {
+      addMutation.mutate(input.trim());
     }
-    for (const sw of stopWords) {
-      delete merged[sw];
-    }
-    return Object.entries(merged).sort((a, b) => b[1] - a[1]);
-  }, [approvedMap, stopWords]);
+  };
 
-  // ─── Render ───────────────────────────────────────────
   if (isLoading) {
     return (
       <Card>
@@ -110,113 +78,74 @@ export function ModerationPanel() {
     );
   }
 
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-destructive">
-          Ошибка загрузки. Убедитесь, что сервер запущен.
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Pending words */}
+      {/* Add words */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Добавить слова</CardTitle>
+          <CardDescription>
+            Введите слова через запятую, пробел или перенос строки
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Слова</Label>
+            <Textarea
+              placeholder="привет, мир, добро, радость..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="min-h-[80px]"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+            />
+          </div>
+          <Button
+            disabled={!input.trim() || addMutation.isPending}
+            onClick={handleAdd}
+          >
+            {addMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Добавление…</>
+            ) : (
+              <><Plus className="h-4 w-4 mr-2" /> Добавить</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Word list */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            На модерации
-            <Badge variant="secondary">{words.length}</Badge>
+            Активные слова
+            <Badge variant="secondary">{wordList.length}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {words.length === 0 ? (
+          {wordList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Inbox className="h-8 w-8 mb-2" />
-              <p className="text-sm">Нет слов на модерации</p>
+              <p className="text-sm">Нет слов. Добавьте слова выше.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Слово</TableHead>
-                  <TableHead className="text-center">Голоса</TableHead>
-                  <TableHead>Отправитель</TableHead>
-                  <TableHead>Время</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {words.map((w) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-medium text-base">{w.word}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline">{w.count}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {w.telegram_username ? `@${w.telegram_username}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatTime(w.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => approveMutation.mutate(w.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => rejectMutation.mutate(w.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* All tower words */}
-      {towerList.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Активные
-              <Badge variant="secondary">{towerList.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Слово</TableHead>
                   <TableHead className="text-center">Частота</TableHead>
-                  <TableHead className="text-center">Источник</TableHead>
                   <TableHead className="text-right">Удалить</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {towerList.map(([word, count]) => (
+                {wordList.map(([word, count]) => (
                   <TableRow key={word}>
                     <TableCell className="font-medium">{word}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline">{count}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={word in approvedMap ? "default" : "secondary"} className="text-xs">
-                        {word in approvedMap ? "бот" : "базовое"}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -233,23 +162,9 @@ export function ModerationPanel() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-}
-
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso + "Z"); // SQLite datetime is UTC
-    return d.toLocaleString("ru-RU", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
 }

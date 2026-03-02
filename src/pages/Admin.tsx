@@ -3,11 +3,10 @@ import { StopWordsManager } from "@/components/admin/StopWordsManager";
 import { DockerStatus } from "@/components/admin/DockerStatus";
 import { WordStats } from "@/components/admin/WordStats";
 import { ModerationPanel } from "@/components/admin/ModerationPanel";
-import { MessagingPanel } from "@/components/admin/MessagingPanel";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BarChart3, Filter, Container, MessageSquare, Send, LogOut } from "lucide-react";
+import { ArrowLeft, BarChart3, Filter, Container, Plus, LogOut } from "lucide-react";
 
 const Admin = () => {
   document.title = "админ test";
@@ -46,11 +45,11 @@ const Admin = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="moderation" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="moderation" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Модерация</span>
-              <span className="sm:hidden">Мод.</span>
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Слова</span>
+              <span className="sm:hidden">Слова</span>
             </TabsTrigger>
             <TabsTrigger value="stop-words" className="gap-2">
               <Filter className="h-4 w-4" />
@@ -66,11 +65,6 @@ const Admin = () => {
               <Container className="h-4 w-4" />
               <span className="hidden sm:inline">Docker</span>
               <span className="sm:hidden">Docker</span>
-            </TabsTrigger>
-            <TabsTrigger value="messaging" className="gap-2">
-              <Send className="h-4 w-4" />
-              <span className="hidden sm:inline">Сообщения</span>
-              <span className="sm:hidden">Чат</span>
             </TabsTrigger>
           </TabsList>
 
@@ -88,10 +82,6 @@ const Admin = () => {
 
           <TabsContent value="docker">
             <DockerStatus />
-          </TabsContent>
-
-          <TabsContent value="messaging">
-            <MessagingPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -132,6 +132,25 @@ export function getApprovedWordsMap(): Record<string, number> {
   return map;
 }
 
+// ─── Direct word entry (offline mode) ────────────────────
+
+export function addWordDirect(word: string): { word: string; count: number; isNew: boolean } {
+  const db = getDB();
+  const existing = db
+    .prepare("SELECT id, count FROM words WHERE word = ? AND status = 'approved'")
+    .get(word) as { id: number; count: number } | undefined;
+
+  if (existing) {
+    db.prepare("UPDATE words SET count = count + 1 WHERE id = ?").run(existing.id);
+    return { word, count: existing.count + 1, isNew: false };
+  }
+
+  db.prepare(
+    "INSERT INTO words (word, source, status) VALUES (?, 'manual', 'approved')"
+  ).run(word);
+  return { word, count: 1, isNew: true };
+}
+
 // ─── Users & Messages ───────────────────────────────────
 
 export function upsertUser(
