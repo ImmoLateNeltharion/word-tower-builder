@@ -1,27 +1,34 @@
-import { useState, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import WordTower from "@/components/WordTower";
+import { useStopWords } from "@/contexts/StopWordsContext";
+import { PLACEHOLDER_WORDS } from "@/lib/words";
 
 const Index = () => {
-  const [words, setWords] = useState<Record<string, number>>({});
-  const [input, setInput] = useState("");
+  const { stopWords } = useStopWords();
 
-  const addWord = useCallback(() => {
-    const w = input.trim().toLowerCase();
-    if (!w) return;
-    setWords(prev => ({ ...prev, [w]: (prev[w] || 0) + 1 }));
-    setInput("");
-  }, [input]);
+  // Poll approved words from the server every 5 seconds
+  const { data: approvedWords = {} } = useQuery<Record<string, number>>({
+    queryKey: ["approved-words"],
+    queryFn: () => fetch("/api/words/approved").then((r) => r.json()),
+    refetchInterval: 5000,
+    retry: 1,
+    retryDelay: 2000,
+  });
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") addWord();
-  };
-
-  const totalWords = Object.values(words).reduce((a, b) => a + b, 0);
+  // Merge placeholder + approved words, then filter out stop words
+  const filteredWords = useMemo(() => {
+    const merged = { ...PLACEHOLDER_WORDS };
+    for (const [w, c] of Object.entries(approvedWords)) {
+      merged[w] = (merged[w] || 0) + c;
+    }
+    for (const sw of stopWords) {
+      delete merged[sw];
+    }
+    return merged;
+  }, [approvedWords, stopWords]);
 
   return (
-    // h-screen fallback for older browsers, 100dvh for mobile (excludes address bar)
     <div
       className="h-screen relative flex flex-col overflow-hidden"
       style={{
@@ -38,39 +45,10 @@ const Index = () => {
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, rgba(5,5,10,0.82) 0%, rgba(5,5,10,0.65) 50%, rgba(5,5,10,0.45) 100%)' }}
       />
-      {/* Header */}
-      <header className="relative z-10 w-full text-center pt-6 pb-3 px-4 shrink-0">
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#ffffff' }}>
-          Башня Слов
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: 'hsl(38, 60%, 55%)' }}>
-          Введите слово — и оно станет частью башни
-        </p>
-      </header>
 
-      {/* Input */}
-      <div className="relative z-10 flex gap-2 w-full max-w-md mx-auto px-4 mb-1 shrink-0">
-        <Input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Напишите слово..."
-          className="bg-card border-border text-foreground placeholder:text-muted-foreground text-base h-11"
-        />
-        <Button onClick={addWord} className="h-11 px-5 font-bold text-base shrink-0">
-          Добавить
-        </Button>
-      </div>
-
-      {totalWords > 0 && (
-        <p className="relative z-10 text-muted-foreground text-xs text-center mb-1 shrink-0">
-          {totalWords} {totalWords === 1 ? "слово" : "слов"} · {Object.keys(words).length} уникальных
-        </p>
-      )}
-
-      {/* Tower fills all remaining space — height drives font scaling */}
-      <div className="relative z-10 flex-1 min-h-0 w-full px-2 sm:px-4">
-        <WordTower words={words} />
+      {/* Tower fills the entire screen */}
+      <div className="relative z-10 flex-1 min-h-0 w-full">
+        <WordTower words={filteredWords} />
       </div>
     </div>
   );

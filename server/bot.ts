@@ -1,0 +1,56 @@
+import { Bot } from "grammy";
+import { filterWord } from "./filter.js";
+import { insertWord } from "./db.js";
+
+let bot: Bot | null = null;
+
+export function startBot(token: string) {
+  bot = new Bot(token);
+
+  bot.command("start", (ctx) => {
+    ctx.reply(
+      "👋 Привет! Напиши мне любое слово, и оно появится на башне после модерации.\n\n" +
+        "Правила:\n" +
+        "• Одно слово за раз\n" +
+        "• Только кириллица\n" +
+        "• Без мата 😉\n" +
+        "• До 5 слов в минуту"
+    );
+  });
+
+  bot.on("message:text", (ctx) => {
+    const userId = String(ctx.from.id);
+    const username = ctx.from.username || ctx.from.first_name || "anon";
+    const text = ctx.message.text;
+
+    const result = filterWord(text, userId);
+
+    if (!result.ok) {
+      return ctx.reply(result.reason);
+    }
+
+    const inserted = insertWord(result.word, userId, username);
+
+    if (inserted.isNew) {
+      return ctx.reply(
+        `✅ Спасибо! Слово «${result.word}» отправлено на модерацию.`
+      );
+    } else {
+      return ctx.reply(
+        `👍 Слово «${result.word}» уже на модерации (голосов: ${inserted.count}).`
+      );
+    }
+  });
+
+  bot.start({ drop_pending_updates: true });
+  console.log("🤖 Telegram bot started");
+
+  return bot;
+}
+
+export function stopBot() {
+  if (bot) {
+    bot.stop();
+    bot = null;
+  }
+}
