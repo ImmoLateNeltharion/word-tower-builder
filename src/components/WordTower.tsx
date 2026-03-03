@@ -139,8 +139,8 @@ const WordTower = ({ words }: WordTowerProps) => {
     const allWords: WordEntry[] = entries.map(([word, count]) => {
       const ratio = count / maxCount;
       const sizeRatio = Math.pow(ratio, power);
-      const baseFontSize = minFontSize + sizeRatio * (maxFontSize - minFontSize);
-      const fontSize = Math.min(maxFontSize, baseFontSize * densityScale);
+      // densityScale boosts only the range portion, not the minimum — preserves contrast
+      const fontSize = Math.min(maxFontSize, minFontSize + sizeRatio * (maxFontSize - minFontSize) * densityScale);
       return { word, count, fontSize, ratio, isUser: word in words };
     });
 
