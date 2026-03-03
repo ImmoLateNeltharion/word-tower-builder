@@ -6,13 +6,13 @@ import path from "path";
 export default defineConfig(() => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 3081,
     hmr: {
       overlay: false,
     },
     proxy: {
       "/api": {
-        target: "http://localhost:3002",
+        target: "http://localhost:3003",
         changeOrigin: true,
       },
     },
