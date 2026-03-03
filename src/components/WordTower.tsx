@@ -1,5 +1,4 @@
 import { useMemo, useRef, useEffect, useState } from "react";
-import { FILLER_WORDS } from "@/lib/words";
 
 interface WordTowerProps {
   words: Record<string, number>;
@@ -253,65 +252,6 @@ const WordTower = ({ words }: WordTowerProps) => {
       row.height = Math.max(row.height, MIN_FONT * 1.3);
       if (usedWidths[bestR] > row.targetWidth) {
         row.targetWidth = usedWidths[bestR];
-      }
-    }
-
-    // Fill remaining space with filler words
-    const fillerMinSize = Math.max(7, containerWidth * 0.008);
-    const fillerMaxSize = fillerMinSize + Math.max(3, containerWidth * 0.004);
-    let fillerIdx = 0;
-
-    for (let r = 0; r < numRows; r++) {
-      const row = rows[r];
-      let used = usedWidths[r];
-      let wc = wordCounts[r];
-      let attempts = 0;
-
-      while (used < row.targetWidth - 8 && attempts < 50) {
-        const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
-        fillerIdx++;
-        const fillerSize = fillerMinSize + Math.random() * (fillerMaxSize - fillerMinSize);
-        const fw = measureWord(filler, fillerSize, 0, true);
-        const gc = wc > 0 ? GAP : 0;
-
-        if (used + gc + fw <= row.targetWidth) {
-          row.placedWords.push({
-            word: filler, fontSize: fillerSize, ratio: 0,
-            isUser: false, isFiller: true,
-          });
-          used += gc + fw;
-          wc++;
-          if (row.height === 0) row.height = fillerSize * 1.2;
-        }
-        attempts++;
-      }
-      usedWidths[r] = used;
-      wordCounts[r] = wc;
-    }
-
-    for (let r = 0; r < numRows; r++) {
-      const row = rows[r];
-      if (row.placedWords.length === 0 && row.targetWidth > 15) {
-        let used = 0;
-        let wc = 0;
-        let attempts = 0;
-        while (used < row.targetWidth - 8 && attempts < 40) {
-          const filler = FILLER_WORDS[fillerIdx % FILLER_WORDS.length];
-          fillerIdx++;
-          const fillerSize = fillerMinSize + Math.random() * (fillerMaxSize - fillerMinSize) * 0.7;
-          const fw = measureWord(filler, fillerSize, 0, true);
-          const gc = wc > 0 ? GAP : 0;
-          if (used + gc + fw <= row.targetWidth) {
-            row.placedWords.push({
-              word: filler, fontSize: fillerSize, ratio: 0,
-              isUser: false, isFiller: true,
-            });
-            used += gc + fw;
-            wc++;
-            row.height = Math.max(row.height, fillerSize * 1.2);
-          }
-          attempts++;
-        }
       }
     }
 
