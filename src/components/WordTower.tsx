@@ -176,7 +176,8 @@ const WordTower = ({ words }: WordTowerProps) => {
       let bestRow = -1;
       let bestScore = -Infinity;
 
-      for (let r = 0; r < numRows; r++) {
+      // Iterate bottom→top so base rows win on equal score (they appear first in animation)
+      for (let r = numRows - 1; r >= 0; r--) {
         const row = rows[r];
         const gapCost = wordCounts[r] > 0 ? GAP : 0;
         const remaining = row.targetWidth - usedWidths[r] - gapCost;
@@ -198,7 +199,7 @@ const WordTower = ({ words }: WordTowerProps) => {
 
       if (bestRow === -1) {
         let maxRemaining = -Infinity;
-        for (let r = 0; r < numRows; r++) {
+        for (let r = numRows - 1; r >= 0; r--) {
           const gapCost = wordCounts[r] > 0 ? GAP : 0;
           const rem = rows[r].targetWidth - usedWidths[r] - gapCost;
           if (rem > maxRemaining) { maxRemaining = rem; bestRow = r; }
