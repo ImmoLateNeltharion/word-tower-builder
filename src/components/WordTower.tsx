@@ -325,7 +325,7 @@ const WordTower = ({ words }: WordTowerProps) => {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-center py-2 select-none">
+    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pb-8 select-none">
       {/* Word rows with glow behind */}
       <div className="relative flex flex-col items-center" style={{ gap: '2px' }}>
         {/* Soft radial ambient glow behind tower */}
