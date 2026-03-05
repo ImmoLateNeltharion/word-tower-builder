@@ -371,7 +371,8 @@ const WordTower = ({ words }: WordTowerProps) => {
               width: `${row.targetWidth}px`,
               minHeight: `${row.height}px`,
               animation: `towerRowIn 0.4s ease-out ${(tower.length - 1 - ri) * 0.1}s both`,
-            }}
+              '--rise-dist': `${(tower.length - 1 - ri) * 50 + 40}px`,
+            } as React.CSSProperties}
           >
             {row.placedWords.map((w, wi) => (
               <span
