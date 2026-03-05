@@ -59,7 +59,7 @@
 @keyframes towerRowIn {
   from {
     opacity: 0;
-    transform: translateY(60px);
+    transform: translateY(var(--rise-dist, 60px));
   }
   to {
     opacity: 1;
