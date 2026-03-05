@@ -379,7 +379,7 @@ const WordTower = ({ words }: WordTowerProps) => {
               lineHeight: 1.05,
               width: `${row.targetWidth}px`,
               minHeight: `${row.height}px`,
-              animation: `towerRowIn 0.5s ease-out ${(tower.length - 1 - ri) * 0.04}s both`,
+              animation: `towerRowIn 0.4s ease-out ${(tower.length - 1 - ri) * 0.1}s both`,
             }}
           >
             {row.placedWords.map((w, wi) => {
