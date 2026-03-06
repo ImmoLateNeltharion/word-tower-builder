@@ -152,7 +152,7 @@ const WordTower = ({ words }: WordTowerProps) => {
     allWords.sort((a, b) => b.count - a.count);
 
     // Tower width scales with container but capped to keep Namsan shape
-    const towerWidth = Math.min(containerWidth * 0.85, containerHeight * 0.55);
+    const towerWidth = Math.min(containerWidth * 0.85, containerHeight * 0.68);
 
     const rows: TowerRow[] = [];
     for (let r = 0; r < numRows; r++) {
@@ -264,17 +264,35 @@ const WordTower = ({ words }: WordTowerProps) => {
       }
     }
 
-    // Post-layout: if total height exceeds container, scale all fonts down
+    // Post-layout: scale fonts to fill container height (both up and down)
     const filledRows = rows.filter(r => r.placedWords.length > 0);
     const totalHeight = filledRows.reduce((sum, r) => sum + r.height, 0) + (filledRows.length - 1) * 2;
     const maxTowerHeight = containerHeight * 0.92;
+    const minTowerHeight = containerHeight * 0.82;
+
     if (totalHeight > maxTowerHeight && totalHeight > 0) {
+      // Scale DOWN: tower overflows container
       const scale = maxTowerHeight / totalHeight;
       for (const row of filledRows) {
         for (const pw of row.placedWords) {
           pw.fontSize = Math.max(MIN_FONT, Math.round(pw.fontSize * scale));
         }
         row.height = Math.round(row.height * scale);
+        row.targetWidth = Math.round(row.targetWidth * scale);
+      }
+    } else if (totalHeight < minTowerHeight && totalHeight > 0) {
+      // Scale UP: tower too small, grow to fill vertical space
+      const widestRow = Math.max(...filledRows.map(r => r.targetWidth));
+      const maxScaleByWidth = widestRow > 0 ? (containerWidth * 0.90) / widestRow : 1;
+      const scaleUp = Math.min(minTowerHeight / totalHeight, maxScaleByWidth);
+      if (scaleUp > 1.05) {
+        for (const row of filledRows) {
+          for (const pw of row.placedWords) {
+            pw.fontSize = Math.round(pw.fontSize * scaleUp);
+          }
+          row.height = Math.round(row.height * scaleUp);
+          row.targetWidth = Math.round(row.targetWidth * scaleUp);
+        }
       }
     }
 
@@ -297,8 +315,8 @@ const WordTower = ({ words }: WordTowerProps) => {
   }, [words, containerWidth, containerHeight, fontsReady]);
 
   const { silhouettePath, svgHeight } = useMemo(() => {
-    const cw = Math.min(containerWidth * 0.85, containerHeight * 0.55);
-    const h = cw * 1.6;
+    const cw = Math.min(containerWidth * 0.85, containerHeight * 0.68);
+    const h = Math.min(cw * 1.6, containerHeight * 0.92);
     const cx = cw / 2;
     const hw = cw / 2;
     const steps = 80;
@@ -332,7 +350,7 @@ const WordTower = ({ words }: WordTowerProps) => {
     );
   }
 
-  const towerWidth = Math.min(containerWidth * 0.85, containerHeight * 0.55);
+  const towerWidth = Math.min(containerWidth * 0.85, containerHeight * 0.68);
 
   return (
     <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pb-8 select-none">
@@ -380,7 +398,7 @@ const WordTower = ({ words }: WordTowerProps) => {
               lineHeight: 1.05,
               width: `${row.targetWidth}px`,
               minHeight: `${row.height}px`,
-              animation: `towerRowIn 0.4s ease-out ${(tower.length - 1 - ri) * 0.1}s both`,
+              animation: `towerRowIn 0.6s ease-out ${(tower.length - 1 - ri) * 0.15}s both`,
               '--rise-dist': `${(tower.length - 1 - ri) * 50 + 40}px`,
             } as React.CSSProperties}
           >
