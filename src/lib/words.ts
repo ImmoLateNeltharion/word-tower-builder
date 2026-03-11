@@ -13,4 +13,14 @@ export const FILLER_WORDS = [
   "мера", "доля", "суть", "взор", "пласт", "слой", "ярус", "скала", "стена",
 ];
 
-export const PLACEHOLDER_WORDS: Record<string, number> = {};
+export const PLACEHOLDER_WORDS: Record<string, number> = {
+  // high frequency
+  imaging: 18, digital: 16, dental: 15, precision: 14, innovation: 13,
+  // mid frequency
+  panoramic: 10, cbct: 9, technology: 9, diagnosis: 8, treatment: 8,
+  clarity: 7, workflow: 7, advanced: 6, quality: 6, care: 6,
+  // lower frequency
+  sensor: 5, detector: 5, smart: 5, accurate: 4, solution: 4,
+  clinic: 4, implant: 4, patient: 3, oral: 3, scan: 3,
+  health: 3, expert: 2, reliable: 2, global: 2, partner: 2,
+};
