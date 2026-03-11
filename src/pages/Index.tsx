@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import WordTower from "@/components/WordTower";
 import { useStopWords } from "@/contexts/StopWordsContext";
 import { PLACEHOLDER_WORDS } from "@/lib/words";
+import { getAllStopWords } from "@/lib/stop-words";
 
 const Index = () => {
   document.title = "test";
@@ -17,14 +18,15 @@ const Index = () => {
     retryDelay: 2000,
   });
 
-  // Merge placeholder + approved words, then filter out stop words
+  // Merge placeholder + approved words, then filter out stop words (built-in + user)
   const filteredWords = useMemo(() => {
-    const merged = { ...PLACEHOLDER_WORDS };
-    for (const [w, c] of Object.entries(approvedWords)) {
-      merged[w] = (merged[w] || 0) + c;
+    const blocked = getAllStopWords(stopWords);
+    const merged: Record<string, number> = {};
+    for (const [w, c] of Object.entries(PLACEHOLDER_WORDS)) {
+      if (!blocked.has(w.toLowerCase())) merged[w] = c;
     }
-    for (const sw of stopWords) {
-      delete merged[sw];
+    for (const [w, c] of Object.entries(approvedWords)) {
+      if (!blocked.has(w.toLowerCase())) merged[w] = (merged[w] || 0) + c;
     }
     return merged;
   }, [approvedWords, stopWords]);
