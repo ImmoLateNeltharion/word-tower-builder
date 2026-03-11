@@ -47,19 +47,30 @@ const Index = () => {
         style={{ background: 'linear-gradient(to bottom, rgba(5,5,10,0.82) 0%, rgba(5,5,10,0.65) 50%, rgba(5,5,10,0.45) 100%)' }}
       />
 
-      {/* Top bar: logo left, QR right */}
-      <div className="relative z-20 flex items-start justify-between px-6 pt-5 pointer-events-none">
-        <img
-          src="/vatech-logo.png"
-          alt="Vatech"
-          style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
-        />
-        <img
-          src="/vatech-qr.png"
-          alt="QR"
-          style={{ height: '90px', width: '90px', objectFit: 'contain', borderRadius: '8px' }}
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-        />
+      {/* QR code — neon frame, top right */}
+      <div className="absolute z-20 top-5 right-5 pointer-events-none">
+        <div
+          style={{
+            padding: '7px',
+            background: 'rgba(5,5,10,0.80)',
+            borderRadius: '10px',
+            border: '1.5px solid hsl(35, 90%, 55%)',
+            boxShadow: '0 0 8px hsl(35, 90%, 55%), 0 0 20px hsl(35, 85%, 45% / 0.55), 0 0 40px hsl(35, 80%, 40% / 0.25)',
+          }}
+        >
+          <img
+            src="/vatech-qr.png"
+            alt="QR"
+            style={{
+              height: '82px',
+              width: '82px',
+              objectFit: 'contain',
+              display: 'block',
+              borderRadius: '4px',
+            }}
+            onError={(e) => { (e.target as HTMLImageElement).closest('div')!.style.display = 'none'; }}
+          />
+        </div>
       </div>
 
       {/* Tower fills the remaining screen */}
