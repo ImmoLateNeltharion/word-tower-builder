@@ -43,16 +43,15 @@ let _measureSpan: HTMLSpanElement | null = null;
 function getMeasureSpan(): HTMLSpanElement {
   if (!_measureSpan) {
     _measureSpan = document.createElement('span');
-    _measureSpan.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:nowrap;visibility:hidden;font-family:Montserrat,sans-serif;';
+    _measureSpan.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:nowrap;visibility:hidden;font-family:Vatech,sans-serif;';
     document.body.appendChild(_measureSpan);
   }
   return _measureSpan;
 }
 
-function measureWord(word: string, fontSize: number, ratio: number): number {
+function measureWord(word: string, fontSize: number, _ratio: number): number {
   const span = getMeasureSpan();
-  const weight = ratio > 0.6 ? 900 : ratio > 0.3 ? 700 : 600;
-  span.style.fontWeight = String(weight);
+  span.style.fontWeight = '400';
   span.style.fontSize = `${fontSize}px`;
   span.textContent = word;
   // 3% safety margin + 2px flat — handles sub-pixel rounding at all font sizes
@@ -85,14 +84,14 @@ const WordTower = ({ words }: WordTowerProps) => {
     const init = async () => {
       await document.fonts.ready;
       const weights = [400, 600, 700, 900];
-      await Promise.all(weights.map(w => document.fonts.load(`${w} 16px Montserrat`)));
+      await document.fonts.load('400 16px Vatech');
       if (_measureSpan) { _measureSpan.remove(); _measureSpan = null; }
       if (!cancelled) setFontsReady(true);
     };
     init();
     // Fallback: if fonts.ready hangs, check after 500ms
     const fallback = setTimeout(() => {
-      if (!cancelled && document.fonts.check('16px Montserrat')) {
+      if (!cancelled && document.fonts.check('16px Vatech')) {
         if (_measureSpan) { _measureSpan.remove(); _measureSpan = null; }
         setFontsReady(true);
       }
@@ -424,6 +423,7 @@ const WordTower = ({ words }: WordTowerProps) => {
                   key={`${w.word}-${ri}-${wi}`}
                   className="whitespace-nowrap"
                   style={{
+                    fontFamily: 'Vatech, sans-serif',
                     fontSize: `${w.fontSize}px`,
                     color: `hsl(${hue}, ${sat}%, ${lit}%)`,
                     textShadow: w.ratio > 0.5
@@ -431,7 +431,7 @@ const WordTower = ({ words }: WordTowerProps) => {
                       : w.ratio > 0.2
                         ? `0 0 ${6 + w.ratio * 16}px hsl(35 90% 55% / 0.4), 0 0 ${w.ratio * 35}px hsl(30 85% 45% / 0.2)`
                         : `0 0 6px hsl(35 80% 55% / 0.25)`,
-                    fontWeight: w.ratio > 0.6 ? 900 : w.ratio > 0.3 ? 700 : 600,
+                    fontWeight: 400,
                     lineHeight: 1.0,
                   }}
                 >
