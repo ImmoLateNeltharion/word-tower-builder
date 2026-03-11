@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WordTower from "@/components/WordTower";
 import { useStopWords } from "@/contexts/StopWordsContext";
+import { getAllStopWords } from "@/lib/stop-words";
 
 const Index = () => {
   document.title = "test";
@@ -16,11 +17,12 @@ const Index = () => {
     retryDelay: 2000,
   });
 
-  // Filter out stop words (no more placeholder merging — tower shows only real data)
+  // Filter out stop words (built-in defaults + user-configured)
   const filteredWords = useMemo(() => {
-    const map = { ...approvedWords };
-    for (const sw of stopWords) {
-      delete map[sw];
+    const blocked = getAllStopWords(stopWords);
+    const map: Record<string, number> = {};
+    for (const [w, c] of Object.entries(approvedWords)) {
+      if (!blocked.has(w.toLowerCase())) map[w] = c;
     }
     return map;
   }, [approvedWords, stopWords]);
