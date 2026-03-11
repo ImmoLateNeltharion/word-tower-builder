@@ -43,20 +43,19 @@ let _measureSpan: HTMLSpanElement | null = null;
 function getMeasureSpan(): HTMLSpanElement {
   if (!_measureSpan) {
     _measureSpan = document.createElement('span');
-    _measureSpan.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:nowrap;visibility:hidden;font-family:Montserrat,sans-serif;';
+    _measureSpan.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:nowrap;visibility:hidden;font-family:Vatech,sans-serif;';
     document.body.appendChild(_measureSpan);
   }
   return _measureSpan;
 }
 
-function measureWord(word: string, fontSize: number, ratio: number, isFiller: boolean): number {
+function measureWord(word: string, fontSize: number, _ratio: number, _isFiller: boolean): number {
   const span = getMeasureSpan();
-  const weight = isFiller ? 400 : (ratio > 0.6 ? 900 : ratio > 0.3 ? 700 : 600);
-  span.style.fontWeight = String(weight);
+  span.style.fontWeight = '400';
   span.style.fontSize = `${fontSize}px`;
   span.textContent = word;
-  // 3% safety margin + 2px flat — handles sub-pixel rounding at all font sizes
-  return Math.ceil(span.offsetWidth * 1.03) + 2;
+  // 5% safety margin + 2px flat — handles sub-pixel rounding at all font sizes
+  return Math.ceil(span.offsetWidth * 1.05) + 2;
 }
 
 type PlacedWord = {
@@ -85,15 +84,14 @@ const WordTower = ({ words }: WordTowerProps) => {
     let cancelled = false;
     const init = async () => {
       await document.fonts.ready;
-      const weights = [400, 600, 700, 900];
-      await Promise.all(weights.map(w => document.fonts.load(`${w} 16px Montserrat`)));
+      await document.fonts.load('400 16px Vatech');
       if (_measureSpan) { _measureSpan.remove(); _measureSpan = null; }
       if (!cancelled) setFontsReady(true);
     };
     init();
     // Fallback: if fonts.ready hangs, check after 500ms
     const fallback = setTimeout(() => {
-      if (!cancelled && document.fonts.check('16px Montserrat')) {
+      if (!cancelled && document.fonts.check('16px Vatech')) {
         if (_measureSpan) { _measureSpan.remove(); _measureSpan = null; }
         setFontsReady(true);
       }
@@ -137,8 +135,12 @@ const WordTower = ({ words }: WordTowerProps) => {
     type WordEntry = { word: string; count: number; fontSize: number; ratio: number; isUser: boolean };
 
     const allWords: WordEntry[] = entries.map(([word, count]) => {
-      const ratio = count / maxCount;
-      const sizeRatio = Math.pow(ratio, power);
+      const ratio = count / maxCount; // for glow/color only
+      // Logarithmic scale: rare words stay readable but clearly smaller than frequent ones
+      const logCount = Math.log(count + 1);
+      const logMax = Math.log(maxCount + 1);
+      const logRatio = logMax > 0 ? logCount / logMax : 1;
+      const sizeRatio = Math.pow(logRatio, power);
       // densityScale boosts only the range portion, not the minimum — preserves contrast
       const fontSize = Math.min(maxFontSize, minFontSize + sizeRatio * (maxFontSize - minFontSize) * densityScale);
       return { word, count, fontSize, ratio, isUser: word in words };
@@ -259,8 +261,8 @@ const WordTower = ({ words }: WordTowerProps) => {
     // Post-layout: scale fonts to fill container height (both up and down)
     const filledRows = rows.filter(r => r.placedWords.length > 0);
     const totalHeight = filledRows.reduce((sum, r) => sum + r.height, 0) + (filledRows.length - 1) * 2;
-    const maxTowerHeight = containerHeight * 0.92;
-    const minTowerHeight = containerHeight * 0.82;
+    const maxTowerHeight = containerHeight * 0.97;
+    const minTowerHeight = containerHeight * 0.90;
 
     if (totalHeight > maxTowerHeight && totalHeight > 0) {
       // Scale DOWN: tower overflows container
@@ -283,7 +285,8 @@ const WordTower = ({ words }: WordTowerProps) => {
             pw.fontSize = Math.round(pw.fontSize * scaleUp);
           }
           row.height = Math.round(row.height * scaleUp);
-          row.targetWidth = Math.round(row.targetWidth * scaleUp);
+          // Cap targetWidth to tower profile so words stay inside silhouette
+          row.targetWidth = Math.round(towerProfile(row.rowT) * towerWidth);
         }
       }
     }
@@ -355,7 +358,7 @@ const WordTower = ({ words }: WordTowerProps) => {
   })();
 
   return (
-    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pb-8 select-none">
+    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pb-2 select-none">
       {/* Soft radial ambient glow — fixed to full container */}
       <div
         className="absolute pointer-events-none"
@@ -409,15 +412,15 @@ const WordTower = ({ words }: WordTowerProps) => {
                 key={`${w.word}-${ri}-${wi}`}
                 className="whitespace-nowrap"
                 style={{
+                  fontFamily: 'Vatech, sans-serif',
                   fontSize: `${w.fontSize}px`,
                   color: w.isFiller
                     ? `hsl(30, 40%, 45%)`
                     : (() => {
-                        // Seeded color variation: hue 25-50 (orange→gold→warm yellow)
                         const h = wordHash(w.word);
-                        const hue = 25 + (h % 26);            // 25..50
-                        const sat = 70 + (h % 30);            // 70..99
-                        const lit = 48 + ((h >> 4) % 32);     // 48..79 (some whiter)
+                        const hue = 25 + (h % 26);
+                        const sat = 70 + (h % 30);
+                        const lit = 48 + ((h >> 4) % 32);
                         return `hsl(${hue}, ${sat}%, ${lit}%)`;
                       })(),
                   textShadow: w.isFiller
@@ -427,7 +430,7 @@ const WordTower = ({ words }: WordTowerProps) => {
                       : w.ratio > 0.2
                         ? `0 0 ${6 + w.ratio * 16}px hsl(35 90% 55% / 0.4), 0 0 ${w.ratio * 35}px hsl(30 85% 45% / 0.2)`
                         : `0 0 6px hsl(35 80% 55% / 0.25)`,
-                  fontWeight: w.isFiller ? 400 : (w.ratio > 0.6 ? 900 : w.ratio > 0.3 ? 700 : 600),
+                  fontWeight: 400,
                   opacity: w.isFiller ? 0.4 : (w.isUser ? 1 : 0.8),
                   lineHeight: 1.0,
                 }}

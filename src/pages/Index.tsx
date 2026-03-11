@@ -47,7 +47,22 @@ const Index = () => {
         style={{ background: 'linear-gradient(to bottom, rgba(5,5,10,0.82) 0%, rgba(5,5,10,0.65) 50%, rgba(5,5,10,0.45) 100%)' }}
       />
 
-      {/* Tower fills the entire screen */}
+      {/* Top bar: logo left, QR right */}
+      <div className="relative z-20 flex items-start justify-between px-6 pt-5 pointer-events-none">
+        <img
+          src="/vatech-logo.png"
+          alt="Vatech"
+          style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+        />
+        <img
+          src="/vatech-qr.png"
+          alt="QR"
+          style={{ height: '90px', width: '90px', objectFit: 'contain', borderRadius: '8px' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </div>
+
+      {/* Tower fills the remaining screen */}
       <div className="relative z-10 flex-1 min-h-0 w-full">
         <WordTower words={filteredWords} />
       </div>
