@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WordTower from "@/components/WordTower";
 import { useStopWords } from "@/contexts/StopWordsContext";
@@ -6,24 +6,9 @@ import { PLACEHOLDER_WORDS } from "@/lib/words";
 import { getAllStopWords } from "@/lib/stop-words";
 import { downloadPNG, downloadHTML } from "@/lib/download-snapshot";
 
-const QR_KEY = 'wordtower-qr-url';
-const QR_FALLBACK = 'https://t.me/YourBotUsername';
-
 const Index = () => {
   document.title = "test";
   const { stopWords } = useStopWords();
-
-  // Dynamic QR URL from localStorage (syncs across tabs via storage event)
-  const [qrUrl, setQrUrl] = useState(() =>
-    localStorage.getItem(QR_KEY) || QR_FALLBACK
-  );
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === QR_KEY) setQrUrl(e.newValue || QR_FALLBACK);
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
 
   // Auto-download snapshot when opened with ?snapshot=png|html
   const snapshotDone = useRef(false);
@@ -80,17 +65,6 @@ const Index = () => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, rgba(5,5,10,0.82) 0%, rgba(5,5,10,0.65) 50%, rgba(5,5,10,0.45) 100%)' }}
-      />
-
-      {/* QR code — top right, dynamic */}
-      <img
-        className="absolute z-20 top-4 right-4 pointer-events-none"
-        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrUrl)}&size=300x300&margin=6`}
-        width={150}
-        height={150}
-        alt="QR"
-        style={{ borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
       />
 
       {/* Tower fills the remaining screen */}
