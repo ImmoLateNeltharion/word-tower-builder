@@ -13,43 +13,58 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
     const canvas = canvasRef.current;
     if (!canvas || !url) return;
 
+    const px = size * 2; // 2x for retina
+    canvas.width = px;
+    canvas.height = px;
+
     const draw = async () => {
-      // Generate QR to an offscreen canvas
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Generate QR to offscreen canvas — transparent bg, amber modules
       const offscreen = document.createElement("canvas");
       await QRCode.toCanvas(offscreen, url, {
-        width: size * 2, // 2x for sharpness
+        width: px,
         margin: 1,
         color: {
-          dark: "#ffbe50ff",   // amber modules
-          light: "#00000000",  // transparent background
+          dark: "#ffbe50ff",
+          light: "#00000000",
         },
       });
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      canvas.width = size * 2;
-      canvas.height = size * 2;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw QR
-      ctx.globalAlpha = 0.85;
+      ctx.clearRect(0, 0, px, px);
+      ctx.globalAlpha = 0.88;
       ctx.drawImage(offscreen, 0, 0);
       ctx.globalAlpha = 1;
 
-      // Draw logo in center
+      // Draw logo centered, maintaining aspect ratio
       const logo = new Image();
       logo.onload = () => {
-        const logoSize = size * 2 * 0.22; // 22% of QR size
-        const cx = (size * 2 - logoSize) / 2;
-        const cy = (size * 2 - logoSize) / 2;
+        const circleR = px * 0.13; // radius of backdrop circle
+        const cx = px / 2;
+        const cy = px / 2;
 
-        // White circle backdrop
+        // Dark circle backdrop
         ctx.beginPath();
-        ctx.arc(size, size, logoSize * 0.62, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(10,10,10,0.85)";
+        ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(8, 8, 12, 0.90)";
         ctx.fill();
 
-        ctx.drawImage(logo, cx, cy, logoSize, logoSize);
+        // Thin amber ring around backdrop
+        ctx.beginPath();
+        ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 190, 80, 0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Fit logo inside circle while preserving aspect ratio
+        const maxW = circleR * 1.5;
+        const maxH = circleR * 1.2;
+        const aspect = logo.naturalWidth / logo.naturalHeight;
+        let lw = maxW, lh = maxW / aspect;
+        if (lh > maxH) { lh = maxH; lw = maxH * aspect; }
+
+        ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh);
       };
       logo.src = "/vatech-logo.png";
     };
@@ -58,14 +73,25 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
   }, [url, size]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       style={{
         width: size,
         height: size,
-        borderRadius: "8px",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+        borderRadius: "10px",
+        boxShadow: [
+          "0 0 8px rgba(255,190,80,0.55)",
+          "0 0 20px rgba(255,160,50,0.30)",
+          "0 0 40px rgba(255,130,30,0.15)",
+          "inset 0 0 8px rgba(255,190,80,0.08)",
+        ].join(", "),
+        border: "1px solid rgba(255,190,80,0.35)",
+        overflow: "hidden",
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        style={{ width: size, height: size, display: "block" }}
+      />
+    </div>
   );
 }
