@@ -127,26 +127,23 @@ const WordTower = ({ words }: WordTowerProps) => {
     const maxCount = Math.max(...entries.map(([, c]) => c));
     const minCount = Math.min(...entries.map(([, c]) => c));
 
-    // Percentage-based sizing: scale fonts relative to word count
-    // Few words → bigger fonts to fill the tower; many words → smaller fonts
+    // Density scale: fewer words → larger base size (fills tower better)
     const idealTotalWords = 60;
     const densityScale = Math.min(1.5, Math.max(0.5, Math.sqrt(idealTotalWords / n)));
-
-    // Flatten power curve when few words (more uniform sizes)
-    const power = 1 + Math.min(1.2, (n / 50) * 1.2);
 
     type WordEntry = { word: string; count: number; fontSize: number; ratio: number };
 
     const allWords: WordEntry[] = entries.map(([word, count]) => {
       const ratio = count / maxCount; // for glow/color only
-      // Logarithmic scale: rare words stay readable but clearly smaller than frequent ones
-      // log(count+1)/log(maxCount+1) compresses the range so even count=1 gets ~30-40% of max
       const logCount = Math.log(count + 1);
       const logMax = Math.log(maxCount + 1);
       const logRatio = logMax > 0 ? logCount / logMax : 1;
-      const sizeRatio = Math.pow(logRatio, power);
-      // densityScale boosts only the range portion, not the minimum — preserves contrast
-      const fontSize = Math.min(maxFontSize, minFontSize + sizeRatio * (maxFontSize - minFontSize) * densityScale);
+      // Midpoint sizing: base size is the "neutral" reference the user sees.
+      // Words spread ±35% around base depending on frequency:
+      //   most frequent → 1.35× base, least frequent → 0.65× base
+      const baseFont = Math.min(maxFontSize, minFontSize + (maxFontSize - minFontSize) * 0.75 * densityScale);
+      const sizeMult = 0.65 + 0.70 * logRatio;
+      const fontSize = Math.max(minFontSize, Math.min(maxFontSize, baseFont * sizeMult));
       return { word, count, fontSize, ratio };
     });
 
@@ -162,7 +159,7 @@ const WordTower = ({ words }: WordTowerProps) => {
       rows.push({ placedWords: [], targetWidth: Math.max(20, w), rowT: t, height: 0 });
     }
 
-    const GAP = 3;
+    const GAP = 8;
     const usedWidths = new Array(numRows).fill(0);
     const wordCounts = new Array(numRows).fill(0);
 
@@ -409,13 +406,13 @@ const WordTower = ({ words }: WordTowerProps) => {
         <path d={silhouettePath} fill="hsl(35 85% 45%)" stroke="none" filter="url(#towerGlow)" opacity="0.4" />
       </svg>
       {/* Word rows */}
-      <div className="relative flex flex-col items-center" style={{ gap: '2px' }}>
+      <div className="relative flex flex-col items-center" style={{ gap: '6px' }}>
         {tower.map((row, ri) => (
           <div
             key={ri}
             className="relative flex items-baseline justify-center"
             style={{
-              gap: "3px",
+              gap: "8px",
               lineHeight: 1.05,
               width: `${row.targetWidth}px`,
               minHeight: `${row.height}px`,
