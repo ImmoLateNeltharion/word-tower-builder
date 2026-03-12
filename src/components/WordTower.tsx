@@ -368,7 +368,7 @@ const WordTower = ({ words }: WordTowerProps) => {
   })();
 
   return (
-    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pb-2 select-none">
+    <div ref={containerRef} className="relative w-full h-full flex flex-col items-center justify-end pt-8 pb-4 select-none">
       {/* Soft radial ambient glow — fixed to full container */}
       <div
         className="absolute pointer-events-none"
