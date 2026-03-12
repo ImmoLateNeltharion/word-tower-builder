@@ -17,6 +17,11 @@ export function DownloadButtons() {
 
   const downloadPNG = async () => {
     setLoading('png');
+    // Force all CSS animations to their end state so all words are visible
+    const style = document.createElement('style');
+    style.textContent = '* { animation-duration: 0.001s !important; animation-delay: 0s !important; transition-duration: 0s !important; }';
+    document.head.appendChild(style);
+    await new Promise(r => setTimeout(r, 150));
     try {
       const canvas = await html2canvas(document.body, {
         useCORS: true,
@@ -29,6 +34,7 @@ export function DownloadButtons() {
       link.href = canvas.toDataURL('image/png');
       link.click();
     } finally {
+      style.remove();
       setLoading(null);
     }
   };
