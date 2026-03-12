@@ -25,7 +25,7 @@ export function SettingsPanel() {
   };
 
   const openSnapshot = (type: 'png' | 'html') => {
-    window.open(`/?snapshot=${type}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no');
+    window.open(`/?snapshot=${type}`, '_blank');
   };
 
   const qrPreview = url.trim() || QR_FALLBACK;
