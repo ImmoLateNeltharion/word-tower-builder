@@ -14,6 +14,9 @@ const Index = () => {
   document.title = "test";
   const { stopWords } = useStopWords();
 
+  // Responsive QR size: scales with screen width, capped at 300px for large screens
+  const qrSize = Math.max(160, Math.min(300, Math.floor(window.innerWidth * 0.16)));
+
   // Dynamic QR URL from localStorage (syncs across tabs via storage event)
   const [qrUrl, setQrUrl] = useState(() =>
     localStorage.getItem(QR_KEY) || QR_FALLBACK
@@ -82,7 +85,7 @@ const Index = () => {
 
       {/* QR code — top right, dynamic */}
       <div className="absolute z-20 top-4 right-4 pointer-events-none">
-        <QRWithLogo url={qrUrl} size={300} />
+        <QRWithLogo url={qrUrl} size={qrSize} />
       </div>
 
       {/* Tower fills the remaining screen */}
