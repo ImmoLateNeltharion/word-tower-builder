@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 
 const QR_KEY = 'wordtower-qr-url';
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
@@ -22,10 +22,6 @@ export function SettingsPanel() {
     }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  };
-
-  const openSnapshot = (type: 'png' | 'html') => {
-    window.open(`/?snapshot=${type}`, '_blank');
   };
 
   const qrPreview = url.trim() || QR_FALLBACK;
@@ -74,30 +70,6 @@ export function SettingsPanel() {
         </CardContent>
       </Card>
 
-      {/* Export snapshots */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Экспорт башни
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Открывает главную страницу в новом окне, дожидается отрисовки башни и скачивает снапшот.
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => openSnapshot('png')}>
-              <Download className="h-4 w-4 mr-2" />
-              Скачать PNG
-            </Button>
-            <Button variant="outline" onClick={() => openSnapshot('html')}>
-              <Download className="h-4 w-4 mr-2" />
-              Скачать HTML
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
