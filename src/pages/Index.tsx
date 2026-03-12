@@ -82,7 +82,7 @@ const Index = () => {
 
       {/* QR code — top right, dynamic */}
       <div className="absolute z-20 top-4 right-4 pointer-events-none">
-        <QRWithLogo url={qrUrl} size={150} />
+        <QRWithLogo url={qrUrl} size={300} />
       </div>
 
       {/* Tower fills the remaining screen */}

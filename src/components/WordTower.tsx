@@ -13,6 +13,18 @@ function wordHash(word: string): number {
   return Math.abs(h);
 }
 
+// Vatech brand palette: reds + silvers
+const BRAND_PALETTE: [number, number, number][] = [
+  [352, 85, 55],  // Vatech Red
+  [0,   5,  82],  // Silver
+  [350, 65, 72],  // Light Rose
+  [0,   0,  94],  // Near White
+  [355, 90, 44],  // Deep Red
+  [5,   12, 76],  // Warm Silver
+  [348, 75, 63],  // Mid Rose
+  [0,   3,  88],  // Light Silver
+];
+
 // Tower silhouette profile: t=0 top, t=1 bottom. Returns half-width factor 0..1
 // Namsan Tower shape: antenna tip → observation deck bulge → narrow shaft → wider base
 function towerProfile(t: number): number {
@@ -378,7 +390,7 @@ const WordTower = ({ words }: WordTowerProps) => {
           transform: 'translate(-50%, -50%)',
           width: `${towerWidth * 2.2}px`,
           height: `${svgHeight * 1.6}px`,
-          background: 'radial-gradient(ellipse 40% 50% at center, hsl(35 80% 40% / 0.35) 0%, hsl(30 70% 35% / 0.15) 40%, transparent 70%)',
+          background: 'radial-gradient(ellipse 40% 50% at center, hsl(352 65% 32% / 0.38) 0%, hsl(350 55% 25% / 0.16) 40%, transparent 70%)',
         }}
       />
       {/* Blurred tower silhouette glow — fixed to full container */}
@@ -397,10 +409,18 @@ const WordTower = ({ words }: WordTowerProps) => {
       >
         <defs>
           <filter id="towerGlow" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="35" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="28" />
+          </filter>
+          <filter id="towerEdge" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
           </filter>
         </defs>
-        <path d={silhouettePath} fill="hsl(35 85% 45%)" stroke="none" filter="url(#towerGlow)" opacity="0.4" />
+        {/* Wide soft glow */}
+        <path d={silhouettePath} fill="hsl(352 80% 42%)" stroke="none" filter="url(#towerGlow)" opacity="0.45" />
+        {/* Tight inner edge glow */}
+        <path d={silhouettePath} fill="hsl(352 90% 62%)" stroke="none" filter="url(#towerEdge)" opacity="0.22" />
+        {/* Sharp contour stroke */}
+        <path d={silhouettePath} fill="none" stroke="hsl(352 85% 68%)" strokeWidth="1.5" opacity="0.45" />
       </svg>
       {/* Word rows */}
       <div className="relative flex flex-col items-center" style={{ gap: '6px' }}>
@@ -419,9 +439,7 @@ const WordTower = ({ words }: WordTowerProps) => {
           >
             {row.placedWords.map((w, wi) => {
               const h = wordHash(w.word);
-              const hue = 25 + (h % 26);
-              const sat = 70 + (h % 30);
-              const lit = 48 + ((h >> 4) % 32);
+              const [hue, sat, lit] = BRAND_PALETTE[h % BRAND_PALETTE.length];
               return (
                 <span
                   key={`${w.word}-${ri}-${wi}`}
@@ -431,10 +449,10 @@ const WordTower = ({ words }: WordTowerProps) => {
                     fontSize: `${w.fontSize}px`,
                     color: `hsl(${hue}, ${sat}%, ${lit}%)`,
                     textShadow: w.ratio > 0.5
-                      ? `0 0 ${8 + w.ratio * 25}px hsl(35 95% 55% / 0.6), 0 0 ${w.ratio * 50}px hsl(30 90% 45% / 0.3), 0 0 ${w.ratio * 80}px hsl(25 80% 40% / 0.15)`
+                      ? `0 0 ${8 + w.ratio * 25}px hsl(352 95% 60% / 0.65), 0 0 ${w.ratio * 50}px hsl(352 85% 50% / 0.30), 0 0 ${w.ratio * 80}px hsl(350 75% 40% / 0.15)`
                       : w.ratio > 0.2
-                        ? `0 0 ${6 + w.ratio * 16}px hsl(35 90% 55% / 0.4), 0 0 ${w.ratio * 35}px hsl(30 85% 45% / 0.2)`
-                        : `0 0 6px hsl(35 80% 55% / 0.25)`,
+                        ? `0 0 ${6 + w.ratio * 16}px hsl(352 90% 60% / 0.45), 0 0 ${w.ratio * 35}px hsl(352 80% 48% / 0.22)`
+                        : `0 0 6px hsl(352 80% 60% / 0.28)`,
                     fontWeight: 400,
                     lineHeight: 1.0,
                   }}
