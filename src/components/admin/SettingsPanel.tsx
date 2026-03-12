@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,12 +61,11 @@ export function SettingsPanel() {
             </div>
             <div className="shrink-0">
               <div className="p-3 bg-white rounded-lg shadow-sm inline-block">
-                <QRCodeSVG
-                  value={qrPreview}
-                  size={150}
-                  bgColor="white"
-                  fgColor="#0a0a0a"
-                  level="M"
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrPreview)}&size=300x300&margin=6`}
+                  width={150}
+                  height={150}
+                  alt="QR preview"
                 />
               </div>
               <p className="text-xs text-muted-foreground text-center mt-1">Предпросмотр</p>

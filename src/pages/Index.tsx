@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { QRCodeSVG } from 'qrcode.react';
 import WordTower from "@/components/WordTower";
 import { useStopWords } from "@/contexts/StopWordsContext";
 import { PLACEHOLDER_WORDS } from "@/lib/words";
@@ -84,23 +83,15 @@ const Index = () => {
       />
 
       {/* QR code — top right, dynamic */}
-      <div
+      <img
         className="absolute z-20 top-4 right-4 pointer-events-none"
-        style={{
-          background: 'rgba(255,255,255,0.92)',
-          borderRadius: '8px',
-          padding: '6px',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-        }}
-      >
-        <QRCodeSVG
-          value={qrUrl}
-          size={150}
-          bgColor="transparent"
-          fgColor="#0a0a0a"
-          level="M"
-        />
-      </div>
+        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrUrl)}&size=300x300&margin=6`}
+        width={150}
+        height={150}
+        alt="QR"
+        style={{ borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
 
       {/* Tower fills the remaining screen */}
       <div className="relative z-10 flex-1 min-h-0 w-full">
