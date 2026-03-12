@@ -5,12 +5,12 @@ import { useStopWords } from "@/contexts/StopWordsContext";
 import { PLACEHOLDER_WORDS } from "@/lib/words";
 import { getAllStopWords } from "@/lib/stop-words";
 import { downloadPNG, downloadHTML } from "@/lib/download-snapshot";
+import { DownloadButtons } from "@/components/DownloadButtons";
 
 const Index = () => {
   document.title = "test";
   const { stopWords } = useStopWords();
 
-  // Auto-download snapshot when opened with ?snapshot=png|html
   const snapshotDone = useRef(false);
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get('snapshot');
@@ -23,11 +23,10 @@ const Index = () => {
       } finally {
         window.close();
       }
-    }, 2500); // wait for tower to paint
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Poll approved words from the server every 5 seconds
   const { data: approvedWords = {} } = useQuery<Record<string, number>>({
     queryKey: ["approved-words"],
     queryFn: () => fetch("/api/words/approved").then((r) => r.json()),
@@ -36,7 +35,6 @@ const Index = () => {
     retryDelay: 2000,
   });
 
-  // Merge placeholder + approved words, then filter out stop words (built-in + user)
   const filteredWords = useMemo(() => {
     const blocked = getAllStopWords(stopWords);
     const merged: Record<string, number> = {};
@@ -61,16 +59,14 @@ const Index = () => {
         backgroundColor: '#0a0a0a',
       }}
     >
-      {/* Dark overlay to keep text readable */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, rgba(5,5,10,0.82) 0%, rgba(5,5,10,0.65) 50%, rgba(5,5,10,0.45) 100%)' }}
       />
-
-      {/* Tower fills the remaining screen */}
       <div className="relative z-10 flex-1 min-h-0 w-full">
         <WordTower words={filteredWords} />
       </div>
+      <DownloadButtons />
     </div>
   );
 };
