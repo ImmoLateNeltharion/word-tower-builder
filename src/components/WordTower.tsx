@@ -123,7 +123,7 @@ const WordTower = ({ words }: WordTowerProps) => {
     const maxFontByWidth = containerWidth * 0.124;
     const maxFontByHeight = containerHeight / 18;
     const maxFontSize = Math.max(11, Math.min(maxFontByWidth, maxFontByHeight, 240));
-    const minFontSize = Math.max(9, containerWidth * 0.014);
+    const minFontSize = Math.max(16, containerWidth * 0.020);
 
     const maxCount = Math.max(...entries.map(([, c]) => c));
 
