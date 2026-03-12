@@ -409,18 +409,10 @@ const WordTower = ({ words }: WordTowerProps) => {
       >
         <defs>
           <filter id="towerGlow" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="28" />
-          </filter>
-          <filter id="towerEdge" x="-25%" y="-25%" width="150%" height="150%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="35" />
           </filter>
         </defs>
-        {/* Wide soft glow */}
-        <path d={silhouettePath} fill="hsl(352 80% 42%)" stroke="none" filter="url(#towerGlow)" opacity="0.45" />
-        {/* Tight inner edge glow */}
-        <path d={silhouettePath} fill="hsl(352 90% 62%)" stroke="none" filter="url(#towerEdge)" opacity="0.22" />
-        {/* Sharp contour stroke */}
-        <path d={silhouettePath} fill="none" stroke="hsl(352 85% 68%)" strokeWidth="1.5" opacity="0.45" />
+        <path d={silhouettePath} fill="hsl(352 80% 42%)" stroke="none" filter="url(#towerGlow)" opacity="0.4" />
       </svg>
       {/* Word rows */}
       <div className="relative flex flex-col items-center" style={{ gap: '6px' }}>
