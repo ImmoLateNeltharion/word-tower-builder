@@ -30,8 +30,8 @@ export function DownloadButtons() {
 
   const btn: React.CSSProperties = {
     background: 'rgba(5,5,10,0.65)',
-    border: '1px solid rgba(255,190,80,0.35)',
-    color: 'rgba(255,190,80,0.85)',
+    border: '1px solid rgba(220,24,48,0.45)',
+    color: 'rgba(220,24,48,0.88)',
     borderRadius: '6px',
     padding: '5px 11px',
     fontSize: '12px',

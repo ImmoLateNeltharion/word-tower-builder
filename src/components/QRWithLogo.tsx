@@ -21,13 +21,13 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Generate QR to offscreen canvas — transparent bg, amber modules
+      // Generate QR to offscreen canvas — transparent bg, silver/white modules
       const offscreen = document.createElement("canvas");
       await QRCode.toCanvas(offscreen, url, {
         width: px,
         margin: 1,
         color: {
-          dark: "#ffbe50ff",
+          dark: "#f0f0f0ff",
           light: "#00000000",
         },
       });
@@ -65,8 +65,8 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
         ctx.fill();
         ctx.globalCompositeOperation = "source-over";
 
-        // Draw logo with amber glow
-        ctx.shadowColor = "rgba(255,190,80,0.6)";
+        // Draw logo with brand red glow
+        ctx.shadowColor = "rgba(220,24,48,0.7)";
         ctx.shadowBlur = 8;
         ctx.drawImage(logo, cx - lw / 2, cy - lh / 2, lw, lh);
         ctx.shadowBlur = 0;
@@ -84,12 +84,12 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
         height: size,
         borderRadius: "10px",
         boxShadow: [
-          "0 0 8px rgba(255,190,80,0.55)",
-          "0 0 20px rgba(255,160,50,0.30)",
-          "0 0 40px rgba(255,130,30,0.15)",
-          "inset 0 0 8px rgba(255,190,80,0.08)",
+          "0 0 8px rgba(220,24,48,0.55)",
+          "0 0 20px rgba(220,24,48,0.28)",
+          "0 0 40px rgba(220,24,48,0.12)",
+          "inset 0 0 8px rgba(220,24,48,0.06)",
         ].join(", "),
-        border: "1px solid rgba(255,190,80,0.35)",
+        border: "1px solid rgba(220,24,48,0.40)",
         overflow: "hidden",
       }}
     >
