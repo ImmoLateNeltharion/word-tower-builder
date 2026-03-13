@@ -17,6 +17,8 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
     canvas.width = px;
     canvas.height = px;
 
+    let cancelled = false;
+
     const draw = async () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -32,6 +34,8 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
         },
       });
 
+      if (cancelled) return;
+
       ctx.clearRect(0, 0, px, px);
       ctx.globalAlpha = 0.88;
       ctx.drawImage(offscreen, 0, 0);
@@ -40,6 +44,7 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
       // Draw logo centered, maintaining aspect ratio
       const logo = new Image();
       logo.onload = () => {
+        if (cancelled) return;
         const cx = px / 2;
         const cy = px / 2;
 
@@ -75,6 +80,7 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
     };
 
     draw();
+    return () => { cancelled = true; };
   }, [url, size]);
 
   return (
