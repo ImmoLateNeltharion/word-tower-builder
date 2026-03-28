@@ -46,6 +46,12 @@ export function getDB(): Database.Database {
       CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(telegram_user_id);
       CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
 
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
       -- backfill users from existing words data
       INSERT OR IGNORE INTO users (telegram_user_id, username)
       SELECT DISTINCT telegram_user_id, telegram_username
@@ -189,4 +195,30 @@ export function getAllUserIds(): string[] {
   const db = getDB();
   const rows = db.prepare("SELECT telegram_user_id FROM users").all() as { telegram_user_id: string }[];
   return rows.map(r => r.telegram_user_id);
+}
+
+export function getSetting(key: string): string | null {
+  const db = getDB();
+  const row = db
+    .prepare("SELECT value FROM app_settings WHERE key = ?")
+    .get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string | null): void {
+  const db = getDB();
+  const normalized = value?.trim() ?? "";
+
+  if (!normalized) {
+    db.prepare("DELETE FROM app_settings WHERE key = ?").run(key);
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = datetime('now')
+  `).run(key, normalized);
 }

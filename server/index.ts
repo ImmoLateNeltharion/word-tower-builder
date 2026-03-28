@@ -1,13 +1,21 @@
 import express from "express";
 import { execSync } from "child_process";
-import { getPendingWords, approveWord, rejectWord, getApprovedWordsMap, deleteApprovedWord, getUsers, getMessages, insertMessage, getAllUserIds } from "./db.js";
-import { startBot, getBot } from "./bot.js";
+import { getPendingWords, approveWord, rejectWord, getApprovedWordsMap, deleteApprovedWord, getUsers, getMessages, insertMessage, getAllUserIds, getSetting, setSetting } from "./db.js";
+import { startBot, getBot, getBotInfo, stopBot } from "./bot.js";
 import { authMiddleware, loginHandler, logoutHandler, statusHandler } from "./auth.js";
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const BOT_LINK_KEY = "bot_link";
+const BOT_TOKEN_KEY = "telegram_bot_token";
+const BOT_LINK_FALLBACK = "https://t.me/YourBotUsername";
 
 app.use(express.json());
+
+function maskToken(token: string): string {
+  if (token.length <= 12) return "***";
+  return `${token.slice(0, 6)}...${token.slice(-6)}`;
+}
 
 // ─── Auth endpoints (public) ────────────────────────────
 app.post("/api/auth/login", loginHandler);
@@ -24,10 +32,64 @@ app.get("/api/words/approved", (_req, res) => {
   }
 });
 
+app.get("/api/settings/public", (_req, res) => {
+  const botLink = getSetting(BOT_LINK_KEY) || BOT_LINK_FALLBACK;
+  res.json({ botLink });
+});
+
 // ─── Protected endpoints (require auth) ─────────────────
 app.use("/api/words", authMiddleware);
 app.use("/api/docker", authMiddleware);
 app.use("/api/messages", authMiddleware);
+app.use("/api/settings", authMiddleware);
+
+app.get("/api/settings", (_req, res) => {
+  const savedToken = getSetting(BOT_TOKEN_KEY) || "";
+  const envToken = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
+  const effectiveToken = (savedToken || envToken).trim();
+  const info = getBotInfo();
+
+  res.json({
+    botLink: getSetting(BOT_LINK_KEY) || BOT_LINK_FALLBACK,
+    hasBotToken: !!effectiveToken,
+    botTokenMasked: effectiveToken ? maskToken(effectiveToken) : "",
+    tokenSource: savedToken ? "database" : envToken ? "env" : null,
+    botRunning: info.running,
+    botUsername: info.username,
+  });
+});
+
+app.post("/api/settings/bot-link", (req, res) => {
+  const botLink = String(req.body?.botLink || "").trim();
+  if (!botLink) return res.status(400).json({ error: "botLink is required" });
+  if (botLink.length > 500) return res.status(400).json({ error: "botLink is too long" });
+
+  setSetting(BOT_LINK_KEY, botLink);
+  res.json({ success: true, botLink });
+});
+
+app.post("/api/settings/bot-token", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+
+  if (!token) {
+    setSetting(BOT_TOKEN_KEY, null);
+    stopBot();
+    return res.json({ success: true, botRunning: false, disabled: true });
+  }
+
+  const started = await startBot(token);
+  if (!started.ok) {
+    return res.status(400).json({ error: started.error || "Failed to start bot with this token" });
+  }
+
+  setSetting(BOT_TOKEN_KEY, token);
+  return res.json({
+    success: true,
+    botRunning: true,
+    botUsername: started.username || null,
+    botTokenMasked: maskToken(token),
+  });
+});
 
 // ─── Docker status ──────────────────────────────────────
 app.get("/api/docker/status", (_req, res) => {
@@ -167,9 +229,13 @@ app.listen(PORT, () => {
 });
 
 // ─── Start Telegram bot (if token provided) ─────────────
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = (getSetting(BOT_TOKEN_KEY) || process.env.TELEGRAM_BOT_TOKEN || "").trim();
 if (BOT_TOKEN) {
-  startBot(BOT_TOKEN);
+  void startBot(BOT_TOKEN).then((result) => {
+    if (!result.ok) {
+      console.error("❌ Failed to start Telegram bot:", result.error);
+    }
+  });
 } else {
   console.log("⚠️  TELEGRAM_BOT_TOKEN not set — bot disabled");
 }

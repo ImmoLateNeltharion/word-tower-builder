@@ -6,7 +6,6 @@ import { getAllStopWords } from "@/lib/stop-words";
 import { downloadPNG, downloadHTML } from "@/lib/download-snapshot";
 import { QRWithLogo } from "@/components/QRWithLogo";
 
-const QR_KEY = 'wordtower-qr-url';
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
 
 const Index = () => {
@@ -30,17 +29,15 @@ const Index = () => {
     return () => ro.disconnect();
   }, []);
 
-  // Dynamic QR URL from localStorage (syncs across tabs via storage event)
-  const [qrUrl, setQrUrl] = useState(() =>
-    localStorage.getItem(QR_KEY) || QR_FALLBACK
-  );
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === QR_KEY) setQrUrl(e.newValue || QR_FALLBACK);
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  const { data: publicSettings } = useQuery<{ botLink: string }>({
+    queryKey: ["public-settings"],
+    queryFn: () => fetch("/api/settings/public").then((r) => {
+      if (!r.ok) throw new Error("Failed to load public settings");
+      return r.json();
+    }),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
 
   // Auto-download snapshot when opened with ?snapshot=png|html
   const snapshotDone = useRef(false);
@@ -78,6 +75,7 @@ const Index = () => {
     }
     return map;
   }, [approvedWords, stopWords]);
+  const qrUrl = publicSettings?.botLink?.trim() || QR_FALLBACK;
 
   return (
     <div

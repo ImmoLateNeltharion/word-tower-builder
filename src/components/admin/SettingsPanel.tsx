@@ -1,27 +1,95 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode } from 'lucide-react';
+import { QrCode, Bot } from 'lucide-react';
+import { toast } from "sonner";
 
-const QR_KEY = 'wordtower-qr-url';
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
 
+type SettingsResponse = {
+  botLink: string;
+  hasBotToken: boolean;
+  botTokenMasked: string;
+  tokenSource: "database" | "env" | null;
+  botRunning: boolean;
+  botUsername: string | null;
+};
+
 export function SettingsPanel() {
-  const [url, setUrl] = useState(() => localStorage.getItem(QR_KEY) || QR_FALLBACK);
+  const queryClient = useQueryClient();
+  const { data } = useQuery<SettingsResponse>({
+    queryKey: ["admin-settings"],
+    queryFn: () => fetch("/api/settings").then((r) => {
+      if (!r.ok) throw new Error("Failed to load settings");
+      return r.json();
+    }),
+  });
+
+  const [url, setUrl] = useState(QR_FALLBACK);
+  const [botToken, setBotToken] = useState("");
   const [saved, setSaved] = useState(false);
+  const [tokenSaved, setTokenSaved] = useState(false);
+
+  useEffect(() => {
+    if (!data) return;
+    setUrl(data.botLink || QR_FALLBACK);
+  }, [data]);
+
+  const saveLinkMutation = useMutation({
+    mutationFn: async (botLink: string) => {
+      const r = await fetch("/api/settings/bot-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botLink }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ error: "Failed to save bot link" }));
+        throw new Error(e.error || "Failed to save bot link");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["public-settings"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      toast.success("Ссылка сохранена");
+    },
+    onError: (err: Error) => toast.error(err.message || "Ошибка сохранения ссылки"),
+  });
+
+  const saveTokenMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const r = await fetch("/api/settings/bot-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ error: "Failed to save bot token" }));
+        throw new Error(e.error || "Failed to save bot token");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      setBotToken("");
+      queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+      setTokenSaved(true);
+      setTimeout(() => setTokenSaved(false), 2000);
+      toast.success("Токен обновлен");
+    },
+    onError: (err: Error) => toast.error(err.message || "Ошибка обновления токена"),
+  });
 
   const save = () => {
-    localStorage.setItem(QR_KEY, url);
-    // Notify other tabs (main page will update its QR live)
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: QR_KEY,
-      newValue: url,
-      storageArea: localStorage,
-    }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    saveLinkMutation.mutate(url.trim());
+  };
+
+  const saveToken = () => {
+    saveTokenMutation.mutate(botToken.trim());
   };
 
   const qrPreview = url.trim() || QR_FALLBACK;
@@ -48,7 +116,12 @@ export function SettingsPanel() {
                   placeholder="https://t.me/..."
                 />
               </div>
-              <Button onClick={save} variant={saved ? 'default' : 'outline'} className="w-full sm:w-auto">
+              <Button
+                onClick={save}
+                disabled={!url.trim() || saveLinkMutation.isPending}
+                variant={saved ? 'default' : 'outline'}
+                className="w-full sm:w-auto"
+              >
                 {saved ? '✓ Сохранено' : 'Сохранить'}
               </Button>
               <p className="text-xs text-muted-foreground">
@@ -67,6 +140,54 @@ export function SettingsPanel() {
               <p className="text-xs text-muted-foreground text-center mt-1">Предпросмотр</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Telegram бот
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm text-muted-foreground">
+            <p>Статус: {data?.botRunning ? "запущен" : "остановлен"}</p>
+            <p>Бот: {data?.botUsername || "не определен"}</p>
+            <p>Токен: {data?.hasBotToken ? data.botTokenMasked : "не задан"}</p>
+            <p>Источник токена: {data?.tokenSource || "нет"}</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="bot-token">Новый токен</Label>
+            <Input
+              id="bot-token"
+              type="password"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              placeholder="123456:ABC..."
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={saveToken}
+              disabled={!botToken.trim() || saveTokenMutation.isPending}
+              variant={tokenSaved ? "default" : "outline"}
+            >
+              {tokenSaved ? "✓ Обновлено" : "Обновить токен"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => saveTokenMutation.mutate("")}
+              disabled={saveTokenMutation.isPending}
+            >
+              Отключить бота
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            После сохранения токена бот перезапускается автоматически.
+          </p>
         </CardContent>
       </Card>
 
