@@ -59,7 +59,7 @@ const Index = () => {
   // Poll approved words from the server every 5 seconds
   const { data: approvedWords = {} } = useQuery<Record<string, number>>({
     queryKey: ["approved-words"],
-    queryFn: () => fetch("/api/words/approved").then((r) => r.json()),
+    queryFn: () => fetch("/api/words/approved", { cache: "no-store" }).then((r) => r.json()),
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
     retry: 1,

@@ -26,6 +26,9 @@ app.get("/api/auth/status", statusHandler);
 app.get("/api/words/approved", (_req, res) => {
   try {
     const words = getApprovedWordsMap();
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.json(words);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch approved words" });
