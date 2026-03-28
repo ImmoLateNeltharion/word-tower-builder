@@ -277,8 +277,8 @@ function boxIntersectsHeartHole(
   tr: MapTransform
 ): boolean {
   const points: [number, number][] = [];
-  const cols = 5;
-  const rows = 3;
+  const cols = 7;
+  const rows = 5;
   for (let ry = 0; ry < rows; ry++) {
     for (let rx = 0; rx < cols; rx++) {
       const fx = rx / (cols - 1);
@@ -490,7 +490,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) 
         top: y - wordHeight / 2 - WORD_GAP,
         bottom: y + wordHeight / 2 + WORD_GAP,
       });
-      const heartSafePad = Math.max(8, Math.round(minWordSize * 0.35));
+      const heartSafePad = Math.max(12, Math.round(minWordSize * 0.7));
 
       const isBoxValid = (box: { left: number; top: number; right: number; bottom: number }) => {
         if (box.left < 3 || box.right > width - 3 || box.top < 3 || box.bottom > height - 3) return false;
