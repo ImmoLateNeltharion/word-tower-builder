@@ -490,12 +490,23 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) 
         top: y - wordHeight / 2 - WORD_GAP,
         bottom: y + wordHeight / 2 + WORD_GAP,
       });
+      const heartSafePad = Math.max(8, Math.round(minWordSize * 0.35));
 
       const isBoxValid = (box: { left: number; top: number; right: number; bottom: number }) => {
         if (box.left < 3 || box.right > width - 3 || box.top < 3 || box.bottom > height - 3) return false;
         if (hasQrArea && intersectsQRArea(box, qrArea)) return false;
         if (hasCenterArea && intersectsQRArea(box, centerArea)) return false;
-        if (boxIntersectsHeartHole(box, tr)) return false;
+        if (
+          boxIntersectsHeartHole(
+            {
+              left: box.left - heartSafePad,
+              top: box.top - heartSafePad,
+              right: box.right + heartSafePad,
+              bottom: box.bottom + heartSafePad,
+            },
+            tr
+          )
+        ) return false;
         if (overlapsPlaced(box)) return false;
         return true;
       };
