@@ -19,9 +19,15 @@ const Index = () => {
     const el = mainRef.current;
     if (!el) return;
     const compute = () => {
-      const side = Math.min(el.clientWidth, el.clientHeight);
+      const width = el.clientWidth;
+      const side = Math.min(width, el.clientHeight);
+      const isMobile = width < 768;
       setLogoSize(Math.max(140, Math.min(260, Math.round(side * 0.19))));
-      setQrSize(Math.max(200, Math.min(360, Math.round(side * 0.3))));
+      setQrSize(
+        isMobile
+          ? Math.max(110, Math.min(170, Math.round(side * 0.2)))
+          : Math.max(200, Math.min(360, Math.round(side * 0.3)))
+      );
     };
     compute();
     const ro = new ResizeObserver(compute);
