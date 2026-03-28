@@ -56,7 +56,7 @@ const BRAND_PALETTE: [number, number, number][] = [
 
 const QR_MARGIN = 6;
 const QR_BREATHING = 4;
-const QR_SAFE_PAD = 64;
+const QR_SAFE_PAD_MAX = 64;
 const WORD_GAP = 1;
 const GLOBAL_FONT_SCALE = 1.34;
 const SILHOUETTE_SCALE = 0.64;
@@ -385,17 +385,20 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) 
 
       const hasQrArea = qrSize > 0;
       const hasCenterArea = centerLogoSize > 0;
+      const qrSafePad = hasQrArea
+        ? Math.max(20, Math.min(QR_SAFE_PAD_MAX, Math.round(qrSize * 0.28)))
+        : 0;
       const qrBox = {
-        left: width - QR_MARGIN - qrSize - QR_BREATHING - QR_SAFE_PAD,
-        top: QR_MARGIN - QR_BREATHING - QR_SAFE_PAD,
-        right: width - QR_MARGIN + QR_BREATHING + QR_SAFE_PAD,
-        bottom: QR_MARGIN + qrSize + QR_BREATHING + QR_SAFE_PAD,
+        left: width - QR_MARGIN - qrSize - QR_BREATHING - qrSafePad,
+        top: QR_MARGIN - QR_BREATHING - qrSafePad,
+        right: width - QR_MARGIN + QR_BREATHING + qrSafePad,
+        bottom: QR_MARGIN + qrSize + QR_BREATHING + qrSafePad,
       };
       const qrArea: QRAvoidArea = {
         ...qrBox,
         cx: (qrBox.left + qrBox.right) / 2,
         cy: (qrBox.top + qrBox.bottom) / 2,
-        r: (qrSize * 0.5) + QR_SAFE_PAD,
+        r: (qrSize * 0.5) + qrSafePad,
       };
       const centerArea: QRAvoidArea = {
         left: cx - centerLogoSize * 0.62,

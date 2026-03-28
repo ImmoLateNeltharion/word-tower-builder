@@ -25,7 +25,7 @@ const Index = () => {
       setLogoSize(Math.max(140, Math.min(260, Math.round(side * 0.19))));
       setQrSize(
         isMobile
-          ? Math.max(110, Math.min(170, Math.round(side * 0.2)))
+          ? Math.max(84, Math.min(128, Math.round(side * 0.16)))
           : Math.max(200, Math.min(360, Math.round(side * 0.3)))
       );
     };
@@ -99,7 +99,7 @@ const Index = () => {
       />
 
       {/* QR code — top right, dynamic */}
-      <div className="absolute z-20 top-4 right-4 pointer-events-none">
+      <div className="absolute z-20 top-2 right-2 sm:top-4 sm:right-4 pointer-events-none">
         <QRWithLogo url={qrUrl} size={qrSize} />
       </div>
 
