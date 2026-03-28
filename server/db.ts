@@ -197,6 +197,38 @@ export function getAllUserIds(): string[] {
   return rows.map(r => r.telegram_user_id);
 }
 
+export function addApprovedWord(word: string, source = "admin-seed") {
+  const db = getDB();
+  const normalized = word.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const existingApproved = db
+    .prepare("SELECT id, count FROM words WHERE word = ? AND status = 'approved' ORDER BY id DESC LIMIT 1")
+    .get(normalized) as { id: number; count: number } | undefined;
+
+  if (existingApproved) {
+    db.prepare("UPDATE words SET count = count + 1 WHERE id = ?").run(existingApproved.id);
+    return { word: normalized, count: existingApproved.count + 1, action: "incremented" as const };
+  }
+
+  const existingPending = db
+    .prepare("SELECT id, count FROM words WHERE word = ? AND status = 'pending' ORDER BY id DESC LIMIT 1")
+    .get(normalized) as { id: number; count: number } | undefined;
+
+  if (existingPending) {
+    db.prepare(
+      "UPDATE words SET status = 'approved', moderated_at = datetime('now'), count = count + 1 WHERE id = ?"
+    ).run(existingPending.id);
+    return { word: normalized, count: existingPending.count + 1, action: "promoted" as const };
+  }
+
+  db.prepare(
+    "INSERT INTO words (word, count, source, status, moderated_at) VALUES (?, 1, ?, 'approved', datetime('now'))"
+  ).run(normalized, source);
+
+  return { word: normalized, count: 1, action: "inserted" as const };
+}
+
 export function getSetting(key: string): string | null {
   const db = getDB();
   const row = db

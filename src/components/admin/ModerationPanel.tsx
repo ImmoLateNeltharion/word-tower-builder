@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Loader2, Inbox, Trash2 } from "lucide-react";
+import { Check, X, Loader2, Inbox, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface PendingWord {
@@ -20,6 +20,25 @@ interface PendingWord {
 
 export function ModerationPanel() {
   const queryClient = useQueryClient();
+
+  const seedMutation = useMutation({
+    mutationFn: () =>
+      fetch("/api/words/random-seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count: 3 }),
+      }).then(async (r) => {
+        if (!r.ok) throw new Error("Seed failed");
+        return r.json() as Promise<{ words: { word: string }[] }>;
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["approved-words"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-words"] });
+      const text = data.words.map((w) => w.word).join(", ");
+      toast.success(`Добавлено: ${text}`);
+    },
+    onError: () => toast.error("Не удалось добавить случайные слова"),
+  });
 
   // ─── Pending words ────────────────────────────────────
   const { data: words = [], isLoading, error } = useQuery<PendingWord[]>({
@@ -109,10 +128,24 @@ export function ModerationPanel() {
       {/* Pending words */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            На модерации
-            <Badge variant="secondary">{words.length}</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              На модерации
+              <Badge variant="secondary">{words.length}</Badge>
+            </CardTitle>
+            <Button
+              variant="outline"
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+            >
+              {seedMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              +3 случайных слова
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {words.length === 0 ? (

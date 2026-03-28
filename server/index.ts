@@ -1,8 +1,9 @@
 import express from "express";
 import { execSync } from "child_process";
-import { getPendingWords, approveWord, rejectWord, getApprovedWordsMap, deleteApprovedWord, getUsers, getMessages, insertMessage, getAllUserIds, getSetting, setSetting } from "./db.js";
+import { getPendingWords, approveWord, rejectWord, getApprovedWordsMap, deleteApprovedWord, getUsers, getMessages, insertMessage, getAllUserIds, getSetting, setSetting, addApprovedWord } from "./db.js";
 import { startBot, getBot, getBotInfo, stopBot } from "./bot.js";
 import { authMiddleware, loginHandler, logoutHandler, statusHandler } from "./auth.js";
+import { COMPANY_THEME_WORDS } from "./company-dictionary.js";
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -15,6 +16,15 @@ app.use(express.json());
 function maskToken(token: string): string {
   if (token.length <= 12) return "***";
   return `${token.slice(0, 6)}...${token.slice(-6)}`;
+}
+
+function pickRandomWords(count: number): string[] {
+  const pool = [...COMPANY_THEME_WORDS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.max(1, Math.min(count, pool.length)));
 }
 
 // ─── Auth endpoints (public) ────────────────────────────
@@ -164,6 +174,21 @@ app.delete("/api/words/approved/:word", (req, res) => {
   } else {
     res.status(404).json({ error: "Word not found" });
   }
+});
+
+app.post("/api/words/random-seed", (req, res) => {
+  const requested = Number(req.body?.count);
+  const count = Number.isFinite(requested) ? requested : 3;
+  const words = pickRandomWords(count);
+  const added = words
+    .map((word) => addApprovedWord(word, "admin-seed"))
+    .filter((v): v is NonNullable<typeof v> => Boolean(v));
+
+  res.json({
+    success: true,
+    addedCount: added.length,
+    words: added.map((w) => ({ word: w.word, count: w.count, action: w.action })),
+  });
 });
 
 // ─── Messaging endpoints ─────────────────────────────────
