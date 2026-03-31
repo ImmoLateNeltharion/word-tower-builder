@@ -674,14 +674,14 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) 
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 72% 68% at 50% 50%, rgba(0,0,0,0) 56%, rgba(0,0,0,0.14) 78%, rgba(0,0,0,0.28) 100%)",
+            "radial-gradient(ellipse 72% 68% at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.08) 82%, rgba(0,0,0,0.14) 100%)",
         }}
       />
 
       {placed.map((item) => {
         // Stable shading by absolute distance to outline (no frame-to-frame re-normalization).
         const proximity = Math.max(0, Math.min(1, 1 - item.distNorm / 0.75));
-        const opacity = 0.48 + proximity * 0.42;
+        const opacity = 0.56 + proximity * 0.36;
         const glowIntensity = proximity;
         const satBoost = Math.round(proximity * 15);
         const lightBoost = Math.round(proximity * 12);

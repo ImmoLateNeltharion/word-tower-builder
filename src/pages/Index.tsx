@@ -89,13 +89,13 @@ const Index = () => {
       className="h-screen relative flex flex-col overflow-hidden"
       style={{
         height: '100dvh',
-        backgroundColor: '#060608',
+        backgroundColor: '#0b1220',
       }}
     >
       {/* Radial glow behind heart */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 54% 58% at 50% 48%, rgba(44,92,156,0.16) 0%, rgba(20,36,64,0.08) 38%, transparent 72%)' }}
+        style={{ background: 'radial-gradient(ellipse 56% 60% at 50% 48%, rgba(70,138,214,0.24) 0%, rgba(30,54,92,0.12) 42%, transparent 74%)' }}
       />
 
       {/* QR code — top right, dynamic */}
