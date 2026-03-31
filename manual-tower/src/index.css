@@ -108,7 +108,7 @@
 .word-cloud-item {
   font-weight: 400;
   line-height: 1;
-  will-change: transform;
+  will-change: transform, opacity, filter;
   transition:
     left 520ms ease,
     top 520ms ease,
@@ -119,6 +119,16 @@
   animation-name: cloudSway;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
+  animation-duration: var(--sway-duration, 6.6s);
+  animation-delay: var(--sway-delay, 0s);
+}
+
+.word-cloud-item.is-new {
+  animation-name: cloudSway, cloudManifest;
+  animation-duration: var(--sway-duration, 6.6s), 1150ms;
+  animation-delay: var(--sway-delay, 0s), 0s;
+  animation-iteration-count: infinite, 1;
+  animation-fill-mode: none, both;
 }
 
 .word-cloud-outline {
@@ -153,6 +163,25 @@
   }
   100% {
     transform: translate(-50%, -50%) translateX(0px) translateY(0px) rotate(var(--tilt, 0deg));
+  }
+}
+
+@keyframes cloudManifest {
+  0% {
+    opacity: 0.06;
+    filter: blur(4px);
+  }
+  18% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  72% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0.12;
+    filter: blur(2px);
   }
 }
 

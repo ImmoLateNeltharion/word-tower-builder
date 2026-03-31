@@ -10,6 +10,7 @@ interface WordTowerProps {
 type PlacedWord = {
   word: string;
   count: number;
+  isNew: boolean;
   ratio: number;
   x: number;
   y: number;
@@ -21,7 +22,13 @@ type PlacedWord = {
   swayY: number;
   rotate: number;
   box: { left: number; top: number; right: number; bottom: number };
-  distNorm: number; // 0 = on outline, 1 = far away
+};
+
+type CandidatePoint = {
+  x: number;
+  y: number;
+  cell: number;
+  outlineDistSq: number;
 };
 
 type QRAvoidArea = {
@@ -274,8 +281,8 @@ function boxIntersectsHeartHole(
   tr: MapTransform
 ): boolean {
   const points: [number, number][] = [];
-  const cols = 7;
-  const rows = 5;
+  const cols = 4;
+  const rows = 3;
   for (let ry = 0; ry < rows; ry++) {
     for (let rx = 0; rx < cols; rx++) {
       const fx = rx / (cols - 1);
@@ -310,7 +317,7 @@ function distToShapeOutline(sx: number, sy: number, tr: MapTransform): number {
     const d = dx * dx + dy * dy;
     if (d < minDist) minDist = d;
   }
-  return Math.sqrt(minDist);
+  return minDist;
 }
 
 function getShapeOutlinePaths(tr: MapTransform): string[] {
@@ -331,6 +338,8 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
   const stablePositionsRef = useRef<
     Record<string, Pick<PlacedWord, "x" | "y" | "delay" | "duration" | "swayX" | "swayY" | "rotate">>
   >({});
+  const knownWordsRef = useRef<Set<string>>(new Set());
+  const hasInitializedWordsRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,6 +376,8 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
 
       const dynamicWordLimit = Math.max(110, Math.min(190, Math.round((size.width * size.height) / 15500)));
       const sorted = [...entries].sort((a, b) => b[1] - a[1]).slice(0, dynamicWordLimit);
+      const knownWords = knownWordsRef.current;
+      const isInitialRender = !hasInitializedWordsRef.current;
       const width = size.width;
       const height = size.height;
       const isMobile = width < 768;
@@ -385,6 +396,12 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
       const mapH = (tr.maxY - tr.minY) * tr.scale;
       const cx = tr.originX + mapW / 2;
       const cy = tr.originY + mapH / 2;
+      const heartBounds = {
+        left: tr.originX,
+        right: tr.originX + mapW,
+        top: tr.originY,
+        bottom: tr.originY + mapH,
+      };
 
       const hasQrArea = qrSize > 0;
       const hasCenterArea = centerLogoSize > 0;
@@ -413,22 +430,6 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         r: centerLogoSize * 0.48,
       };
 
-      const candidates: [number, number][] = [];
-      const step = Math.max(7, Math.min(12, Math.round(Math.min(width, height) / 64)));
-      const addGrid = (ox: number, oy: number) => {
-        for (let y = 6 + oy; y <= height - 6; y += step) {
-          for (let x = 6 + ox; x <= width - 6; x += step) {
-            if (hasQrArea && pointInsideQRArea(x, y, qrArea)) continue;
-            if (hasCenterArea && pointInsideQRArea(x, y, centerArea)) continue;
-            if (pointInsideHeartHole(x, y, tr)) continue;
-            candidates.push([x, y]);
-          }
-        }
-      };
-      addGrid(0, 0);
-      addGrid(step / 2, step / 2);
-      if (candidates.length < 120) return [];
-
       const gridCols = 28;
       const gridRows = 18;
       const occGrid = new Uint16Array(gridCols * gridRows);
@@ -454,6 +455,27 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         }
         return sum;
       };
+      const candidates: CandidatePoint[] = [];
+      const stepBase = Math.max(7, Math.min(12, Math.round(Math.min(width, height) / 64)));
+      const step = stepBase;
+      const addGrid = (ox: number, oy: number) => {
+        for (let y = 6 + oy; y <= height - 6; y += step) {
+          for (let x = 6 + ox; x <= width - 6; x += step) {
+            if (hasQrArea && pointInsideQRArea(x, y, qrArea)) continue;
+            if (hasCenterArea && pointInsideQRArea(x, y, centerArea)) continue;
+            if (pointInsideHeartHole(x, y, tr)) continue;
+            candidates.push({
+              x,
+              y,
+              cell: cellIndex(x, y),
+              outlineDistSq: distToShapeOutline(x, y, tr),
+            });
+          }
+        }
+      };
+      addGrid(0, 0);
+      addGrid(step / 2, step / 2);
+      if (candidates.length < 120) return [];
       const result: PlacedWord[] = [];
 
       const bucketSize = Math.max(14, Math.round(minWordSize * 1.8));
@@ -502,7 +524,13 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         if (box.left < 3 || box.right > width - 3 || box.top < 3 || box.bottom > height - 3) return false;
         if (hasQrArea && intersectsQRArea(box, qrArea)) return false;
         if (hasCenterArea && intersectsQRArea(box, centerArea)) return false;
+        const nearHeart =
+          box.right >= heartBounds.left - heartSafePad &&
+          box.left <= heartBounds.right + heartSafePad &&
+          box.bottom >= heartBounds.top - heartSafePad &&
+          box.top <= heartBounds.bottom + heartSafePad;
         if (
+          nearHeart &&
           boxIntersectsHeartHole(
             {
               left: box.left - heartSafePad,
@@ -544,6 +572,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
           reusedWord = {
             word,
             count,
+            isNew: !isInitialRender && !knownWords.has(word),
             ratio,
             x: prev.x,
             y: prev.y,
@@ -555,7 +584,6 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
             swayY: prev.swayY,
             rotate: prev.rotate,
             box,
-            distNorm: distToShapeOutline(prev.x, prev.y, tr),
           };
           break;
         }
@@ -587,29 +615,31 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
           const fontSize = Math.max(minWordSize, Math.round(baseSize * scale));
           const wordWidth = measureWordWidth(word, fontSize);
           const wordHeight = Math.ceil(fontSize * 1.14);
-          const sampleCount = Math.min(280, candidates.length);
+          const sampleCount = Math.min(180, candidates.length);
           const start = seed % candidates.length;
           const walk = coprimeStep(candidates.length, seed ^ (wi * 2654435761));
-          let best: { x: number; y: number; box: { left: number; top: number; right: number; bottom: number }; score: number; dist: number } | null = null;
+          let best: { x: number; y: number; box: { left: number; top: number; right: number; bottom: number }; score: number } | null = null;
 
           for (let i = 0; i < sampleCount; i++) {
             const idx = modPos(start + i * walk, candidates.length);
-            const [x, y] = candidates[idx];
+            const point = candidates[idx];
+            const x = point.x;
+            const y = point.y;
             const box = buildBox(x, y, wordWidth, wordHeight);
             if (!isBoxValid(box)) continue;
 
-            const occ = neighborOcc(cellIndex(x, y));
+            const occ = neighborOcc(point.cell);
             // Strongly prefer positions near the heart outline
-            const distToOutline = distToShapeOutline(x, y, tr);
-            const proximityScore = distToOutline * distToOutline * 40;
+            const proximityScore = point.outlineDistSq * 40;
             const score = occ * 0.15 + proximityScore;
-            if (!best || score < best.score) best = { x, y, box, score, dist: distToOutline };
+            if (!best || score < best.score) best = { x, y, box, score };
           }
 
           if (best) {
             placedWord = {
               word,
               count,
+              isNew: !isInitialRender && !knownWords.has(word),
               ratio,
               x: best.x,
               y: best.y,
@@ -621,7 +651,6 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
               swayY: 4 + (seed % 8),
               rotate: ((seed % 7) - 3) * 0.25,
               box: best.box,
-              distNorm: best.dist,
             };
             break;
           }
@@ -648,6 +677,8 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         };
       }
       stablePositionsRef.current = nextStable;
+      knownWordsRef.current = new Set(result.map((item) => item.word));
+      hasInitializedWordsRef.current = true;
 
       return result;
     } catch (err) {
@@ -710,7 +741,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         return (
           <span
             key={item.word}
-            className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap word-cloud-item"
+            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap word-cloud-item${item.isNew ? " is-new" : ""}`}
             style={{
               left: `${item.x}px`,
               top: `${item.y}px`,
@@ -719,8 +750,8 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
               color: `hsl(${item.color[0]} ${item.color[1]}% ${item.color[2]}%)`,
               opacity: 1,
               textShadow: "none",
-              animationDuration: `${item.duration}s`,
-              animationDelay: `-${item.delay}s`,
+              ["--sway-duration" as string]: `${item.duration}s`,
+              ["--sway-delay" as string]: `-${item.delay}s`,
               ["--sway-x" as string]: `${item.swayX}px`,
               ["--sway-y" as string]: `${item.swayY}px`,
               ["--tilt" as string]: `${item.rotate}deg`,
