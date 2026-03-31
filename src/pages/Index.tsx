@@ -116,7 +116,7 @@ const Index = () => {
             width: `${logoSize * 2}px`,
             maxWidth: "40vw",
             height: "auto",
-            filter: "grayscale(1) saturate(0) brightness(1.85) contrast(1.34) drop-shadow(0 0 3px rgba(240,244,250,0.45)) drop-shadow(0 0 10px rgba(176,206,240,0.20))",
+            filter: "grayscale(1) saturate(0) brightness(2.2) contrast(1.45) drop-shadow(0 0 4px rgba(244,248,252,0.62)) drop-shadow(0 0 12px rgba(184,214,244,0.26))",
             opacity: 1,
           }}
         />
