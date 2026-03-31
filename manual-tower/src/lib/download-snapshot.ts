@@ -18,10 +18,23 @@ export async function downloadPNG(): Promise<void> {
     logging: false,
     backgroundColor: '#0a0a0a',
   });
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => {
+      if (value) resolve(value);
+      else reject(new Error('Failed to create PNG blob'));
+    }, 'image/png');
+  });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.download = `word-tower-${new Date().toISOString().slice(0, 10)}.png`;
-  link.href = canvas.toDataURL('image/png');
+  link.href = url;
+  link.style.display = 'none';
+  document.body.appendChild(link);
   link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    link.remove();
+  }, 4000);
 }
 
 export async function downloadHTML(): Promise<void> {
@@ -72,9 +85,15 @@ ${bodyHTML}
 </html>`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.download = `word-tower-${new Date().toISOString().slice(0, 10)}.html`;
-  link.href = URL.createObjectURL(blob);
+  link.href = url;
+  link.style.display = 'none';
+  document.body.appendChild(link);
   link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    link.remove();
+  }, 4000);
 }

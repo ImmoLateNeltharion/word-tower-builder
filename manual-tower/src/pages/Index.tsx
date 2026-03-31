@@ -30,12 +30,13 @@ const Index = () => {
     const param = new URLSearchParams(window.location.search).get('snapshot');
     if (!param || snapshotDone.current) return;
     snapshotDone.current = true;
+    const autoClose = new URLSearchParams(window.location.search).get("autoclose") === "1";
     const timer = setTimeout(async () => {
       try {
         if (param === 'png') await downloadPNG();
         else if (param === 'html') await downloadHTML();
       } finally {
-        window.close();
+        if (autoClose) setTimeout(() => window.close(), 2200);
       }
     }, 2500); // wait for tower to paint
     return () => clearTimeout(timer);

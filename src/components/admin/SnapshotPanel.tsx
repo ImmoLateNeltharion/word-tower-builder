@@ -10,7 +10,7 @@ export function SnapshotPanel() {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const url = `${window.location.origin}/?snapshot=png`;
+      const url = `${window.location.origin}/?snapshot=png&autoclose=1`;
       const win = window.open(url, "_blank", "noopener,noreferrer,width=1400,height=900");
       if (!win) throw new Error("Popup blocked");
       toast.success("Снимок облака готовится в новом окне");
