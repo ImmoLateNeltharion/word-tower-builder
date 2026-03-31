@@ -55,12 +55,12 @@ export function QRWithLogo({ url, size = 150 }: QRWithLogoProps) {
         height: size,
         borderRadius: "10px",
         boxShadow: [
-          "0 0 8px rgba(220,24,48,0.55)",
-          "0 0 20px rgba(220,24,48,0.28)",
-          "0 0 40px rgba(220,24,48,0.12)",
-          "inset 0 0 8px rgba(220,24,48,0.06)",
+          "0 8px 18px rgba(20, 36, 52, 0.20)",
+          "0 2px 6px rgba(20, 36, 52, 0.14)",
+          "inset 0 0 0 1px rgba(236, 242, 247, 0.7)",
         ].join(", "),
-        border: "1px solid rgba(220,24,48,0.40)",
+        border: "1px solid rgba(230, 238, 246, 0.9)",
+        background: "rgba(255, 255, 255, 0.03)",
         overflow: "hidden",
       }}
     >

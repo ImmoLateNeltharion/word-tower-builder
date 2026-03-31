@@ -41,8 +41,7 @@ const Login = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundColor: "#0a0a0a" }}
+      className="min-h-screen flex items-center justify-center p-4 admin-brand-scope"
     >
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
