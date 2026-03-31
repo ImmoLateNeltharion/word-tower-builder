@@ -5,8 +5,11 @@ import { useStopWords } from "@/contexts/StopWordsContext";
 import { getAllStopWords } from "@/lib/stop-words";
 import { downloadPNG, downloadHTML } from "@/lib/download-snapshot";
 import { QRWithLogo } from "@/components/QRWithLogo";
+import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
+const HEART_GLOW_KEY = "wordtower-heart-glow";
 
 const Index = () => {
   document.title = "test";
@@ -14,6 +17,10 @@ const Index = () => {
   const mainRef = useRef<HTMLDivElement>(null);
   const [logoSize, setLogoSize] = useState(190);
   const [qrSize, setQrSize] = useState(160);
+  const [heartGlowEnabled, setHeartGlowEnabled] = useState(() => {
+    const v = localStorage.getItem(HEART_GLOW_KEY);
+    return v === null ? true : v === "1";
+  });
 
   useEffect(() => {
     const el = mainRef.current;
@@ -105,7 +112,30 @@ const Index = () => {
 
       {/* Tower fills the remaining screen */}
       <div className="relative z-10 flex-1 min-h-0 w-full">
-        <WordTower words={filteredWords} qrSize={qrSize} centerLogoSize={logoSize} />
+        <WordTower
+          words={filteredWords}
+          qrSize={qrSize}
+          centerLogoSize={logoSize}
+          heartGlowEnabled={heartGlowEnabled}
+        />
+      </div>
+
+      <div className="absolute z-30 bottom-3 right-3 pointer-events-auto">
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-black/35 border-white/20 text-white hover:bg-black/50"
+          onClick={() => {
+            setHeartGlowEnabled((prev) => {
+              const next = !prev;
+              localStorage.setItem(HEART_GLOW_KEY, next ? "1" : "0");
+              return next;
+            });
+          }}
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Свечение: {heartGlowEnabled ? "Вкл" : "Выкл"}
+        </Button>
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">

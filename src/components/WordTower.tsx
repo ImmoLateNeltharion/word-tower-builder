@@ -4,6 +4,7 @@ interface WordTowerProps {
   words: Record<string, number>;
   qrSize?: number;
   centerLogoSize?: number;
+  heartGlowEnabled?: boolean;
 }
 
 type PlacedWord = {
@@ -329,7 +330,7 @@ function getShapeOutlinePaths(tr: MapTransform): string[] {
   });
 }
 
-const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) => {
+const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled = true }: WordTowerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [fontsReady, setFontsReady] = useState(false);
@@ -677,6 +678,35 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0 }: WordTowerProps) 
             "radial-gradient(ellipse 72% 68% at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.08) 82%, rgba(0,0,0,0.14) 100%)",
         }}
       />
+      {heartGlowEnabled && shapeOutlinePaths.length > 0 && (
+        <svg
+          className="absolute inset-0 pointer-events-none"
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${size.width} ${size.height}`}
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <filter id="heartGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="2.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          {shapeOutlinePaths.map((path, idx) => (
+            <path
+              key={`heart-glow-${idx}`}
+              d={path}
+              fill="none"
+              stroke="hsl(204 60% 56% / 0.22)"
+              strokeWidth={1.15}
+              filter="url(#heartGlow)"
+            />
+          ))}
+        </svg>
+      )}
 
       {placed.map((item) => {
         // Stable shading by absolute distance to outline (no frame-to-frame re-normalization).
