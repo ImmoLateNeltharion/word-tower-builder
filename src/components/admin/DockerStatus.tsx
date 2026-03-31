@@ -82,13 +82,13 @@ export function DockerStatus() {
             </>
           ) : data?.available ? (
             <>
-              <Wifi className="h-4 w-4 text-green-500" />
-              <span className="text-green-500">Docker подключен</span>
+              <Wifi className="h-4 w-4 text-primary" />
+              <span className="text-primary">Docker подключен</span>
             </>
           ) : (
             <>
-              <WifiOff className="h-4 w-4 text-yellow-500" />
-              <span className="text-yellow-500">Docker не найден</span>
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Docker не найден</span>
             </>
           )}
         </div>

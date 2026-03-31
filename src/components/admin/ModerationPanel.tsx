@@ -181,7 +181,7 @@ export function ModerationPanel() {
                       <Button
                         size="sm"
                         variant="default"
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
                         onClick={() => approveMutation.mutate(w.id)}
                         disabled={approveMutation.isPending || rejectMutation.isPending}
                       >

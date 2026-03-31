@@ -110,12 +110,12 @@ export function WordStats() {
               <XAxis dataKey="range" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip
-                contentStyle={{ background: "#1a1a2e", border: "1px solid #333", borderRadius: 8 }}
-                labelStyle={{ color: "#ccc" }}
+                contentStyle={{ background: "hsl(0 0% 100%)", border: "1px solid hsl(212 24% 80%)", borderRadius: 8 }}
+                labelStyle={{ color: "hsl(214 28% 18%)" }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {stats.distribution.map((_, i) => (
-                  <Cell key={i} fill={`hsl(${30 + i * 5}, 85%, ${55 + i * 3}%)`} />
+                  <Cell key={i} fill={i % 2 === 0 ? "hsl(355 76% 46%)" : "hsl(0 0% 100%)"} />
                 ))}
               </Bar>
             </BarChart>

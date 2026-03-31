@@ -45,14 +45,8 @@ type MapTransform = {
 };
 
 const BRAND_PALETTE: [number, number, number][] = [
-  [0, 0, 96],   // bright silver-white
-  [0, 0, 90],   // soft silver
-  [0, 0, 82],   // graphite silver
-  [358, 84, 52],// vivid red
-  [352, 78, 58],// warm red
-  [348, 66, 64],// muted red
-  [0, 0, 88],   // neutral light silver
-  [355, 72, 46],// deep red
+  [0, 0, 100],   // white
+  [355, 84, 52], // brand red
 ];
 
 const QR_MARGIN = 6;
@@ -713,13 +707,6 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
       )}
 
       {placed.map((item) => {
-        // Stable shading by absolute distance to outline (no frame-to-frame re-normalization).
-        const proximity = Math.max(0, Math.min(1, 1 - item.distNorm / 0.75));
-        const opacity = 0.56 + proximity * 0.36;
-        const glowIntensity = proximity;
-        const satBoost = Math.round(proximity * 15);
-        const lightBoost = Math.round(proximity * 12);
-
         return (
           <span
             key={item.word}
@@ -729,12 +716,9 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
               top: `${item.y}px`,
               fontFamily: "Vatech, sans-serif",
               fontSize: `${item.fontSize}px`,
-              color: `hsl(${item.color[0]} ${Math.min(100, item.color[1] + satBoost)}% ${Math.min(97, item.color[2] + lightBoost)}%)`,
-              opacity,
-              textShadow: glowIntensity > 0.3
-                ? `0 0 ${6 + glowIntensity * 12}px hsl(${item.color[0]} ${item.color[1]}% ${Math.min(97, item.color[2] + 10)}% / ${0.4 + glowIntensity * 0.5}),
-                   0 0 ${16 + glowIntensity * 20}px hsl(${item.color[0]} ${Math.max(50, item.color[1])}% ${Math.max(34, item.color[2])}% / ${glowIntensity * 0.45})`
-                : "none",
+              color: `hsl(${item.color[0]} ${item.color[1]}% ${item.color[2]}%)`,
+              opacity: 1,
+              textShadow: "none",
               animationDuration: `${item.duration}s`,
               animationDelay: `-${item.delay}s`,
               ["--sway-x" as string]: `${item.swayX}px`,
