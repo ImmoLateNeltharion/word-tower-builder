@@ -220,3 +220,53 @@
     opacity: 0.72;
   }
 }
+
+@keyframes heartCorePulse {
+  0% {
+    opacity: 0.24;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.38;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0.24;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes noteDrift {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes brandFadePulse {
+  0% {
+    filter: drop-shadow(0 0 0.2rem rgba(255, 255, 255, 0.14));
+  }
+  50% {
+    filter: drop-shadow(0 0 0.78rem rgba(255, 255, 255, 0.28));
+  }
+  100% {
+    filter: drop-shadow(0 0 0.2rem rgba(255, 255, 255, 0.14));
+  }
+}
+
+.heart-core-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 46% 54% 56% 44% / 50% 50% 50% 50%;
+  background:
+    radial-gradient(60% 54% at 50% 48%, rgba(255, 72, 109, 0.18) 0%, rgba(255, 72, 109, 0.08) 48%, rgba(255, 72, 109, 0) 100%);
+  filter: blur(14px);
+  animation: heartCorePulse 2.4s ease-in-out infinite;
+}

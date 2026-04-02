@@ -8,6 +8,7 @@ import { QRWithLogo } from "@/components/QRWithLogo";
 
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
 const HEART_GLOW_KEY = "wordtower-heart-glow";
+const BRAND_SWITCH_MS = 10_000;
 
 const Index = () => {
   document.title = "test";
@@ -16,6 +17,14 @@ const Index = () => {
   const [logoSize, setLogoSize] = useState(190);
   const [qrSize, setQrSize] = useState(160);
   const [heartGlowEnabled, setHeartGlowEnabled] = useState(true);
+  const [showSlogan, setShowSlogan] = useState(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setShowSlogan((prev) => !prev);
+    }, BRAND_SWITCH_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const readGlow = () => {
@@ -130,18 +139,51 @@ const Index = () => {
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-        <img
-          src="/vatech-logo.png"
-          alt="Vatech"
+        <div
+          className="heart-core-pulse"
           style={{
-            width: `${logoSize * 2}px`,
-            maxWidth: "40vw",
-            height: "auto",
-            transform: "translateY(-30%)",
-            filter: "brightness(0) invert(1)",
-            opacity: 1,
+            width: `${logoSize * 2.6}px`,
+            height: `${logoSize * 1.95}px`,
+            transform: "translateY(-26%)",
           }}
         />
+
+        <div
+          style={{
+            position: "relative",
+            width: `${showSlogan ? logoSize * 2.75 : logoSize * 2}px`,
+            maxWidth: showSlogan ? "56vw" : "40vw",
+            transform: "translateY(-30%)",
+            animation: "brandFadePulse 5.2s ease-in-out infinite",
+          }}
+        >
+          <img
+            src="/vatech-logo.png"
+            alt="Vatech"
+            style={{
+              width: "100%",
+              height: "auto",
+              filter: "brightness(0) invert(1)",
+              opacity: showSlogan ? 0 : 1,
+              transition: "opacity 900ms ease",
+              display: "block",
+            }}
+          />
+          <img
+            src="/vatech-slogan-neon.png"
+            alt="Всегда на Вашей стороне"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              opacity: showSlogan ? 1 : 0,
+              transition: "opacity 900ms ease",
+              filter: "brightness(1.05)",
+            }}
+          />
+        </div>
       </div>
     </div>
   );
