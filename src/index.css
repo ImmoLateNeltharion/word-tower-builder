@@ -108,7 +108,7 @@
 .word-cloud-item {
   font-weight: 400;
   line-height: 1;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
   transition:
     left 520ms ease,
     top 520ms ease,
@@ -193,19 +193,15 @@
 @keyframes cloudManifest {
   0% {
     opacity: 0.06;
-    filter: blur(4px);
   }
   18% {
     opacity: 1;
-    filter: blur(0);
   }
   72% {
     opacity: 1;
-    filter: blur(0);
   }
   100% {
-    opacity: 0.12;
-    filter: blur(2px);
+    opacity: 1;
   }
 }
 
