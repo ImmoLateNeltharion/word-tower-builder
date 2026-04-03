@@ -8,6 +8,7 @@ import { QrCode, Sparkles } from 'lucide-react';
 const QR_KEY = 'wordtower-qr-url';
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
 const HEART_GLOW_KEY = "wordtower-heart-glow";
+const QR_VISIBLE_KEY = "wordtower-qr-visible";
 
 export function SettingsPanel() {
   const [url, setUrl] = useState(() => localStorage.getItem(QR_KEY) || QR_FALLBACK);
@@ -16,12 +17,21 @@ export function SettingsPanel() {
     const v = localStorage.getItem(HEART_GLOW_KEY);
     return v === null ? true : v === "1";
   });
+  const [qrVisible, setQrVisible] = useState(() => {
+    const v = localStorage.getItem(QR_VISIBLE_KEY);
+    return v === null ? true : v === "1";
+  });
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== HEART_GLOW_KEY) return;
-      const v = localStorage.getItem(HEART_GLOW_KEY);
-      setHeartGlowEnabled(v === null ? true : v === "1");
+      if (e.key === HEART_GLOW_KEY) {
+        const v = localStorage.getItem(HEART_GLOW_KEY);
+        setHeartGlowEnabled(v === null ? true : v === "1");
+      }
+      if (e.key === QR_VISIBLE_KEY) {
+        const v = localStorage.getItem(QR_VISIBLE_KEY);
+        setQrVisible(v === null ? true : v === "1");
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -40,6 +50,16 @@ export function SettingsPanel() {
   };
 
   const qrPreview = url.trim() || QR_FALLBACK;
+  const toggleQrVisibility = () => {
+    const next = !qrVisible;
+    setQrVisible(next);
+    localStorage.setItem(QR_VISIBLE_KEY, next ? "1" : "0");
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: QR_VISIBLE_KEY,
+      newValue: next ? "1" : "0",
+      storageArea: localStorage,
+    }));
+  };
 
   return (
     <div className="space-y-4">
@@ -70,6 +90,17 @@ export function SettingsPanel() {
                 QR на главной странице обновится автоматически при смене URL.
               </p>
               <div className="pt-2">
+                <Label className="mb-2 block">Видимость QR</Label>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={toggleQrVisibility}
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  QR-код: {qrVisible ? "Виден" : "Скрыт"}
+                </Button>
+              </div>
+              <div className="pt-2">
                 <Label className="mb-2 block">Свечение контура</Label>
                 <Button
                   variant="outline"
@@ -92,12 +123,18 @@ export function SettingsPanel() {
             </div>
             <div className="shrink-0">
               <div className="p-3 bg-white rounded-lg shadow-sm inline-block">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrPreview)}&size=300x300&margin=6`}
-                  width={150}
-                  height={150}
-                  alt="QR preview"
-                />
+                {qrVisible ? (
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrPreview)}&size=300x300&margin=6`}
+                    width={150}
+                    height={150}
+                    alt="QR preview"
+                  />
+                ) : (
+                  <div className="flex h-[150px] w-[150px] items-center justify-center rounded-md border border-dashed border-zinc-300 text-center text-xs text-muted-foreground">
+                    QR скрыт
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground text-center mt-1">Предпросмотр</p>
             </div>

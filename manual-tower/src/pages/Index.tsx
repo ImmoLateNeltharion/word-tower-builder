@@ -4,26 +4,44 @@ import WordTower from "@/components/WordTower";
 import { useStopWords } from "@/contexts/StopWordsContext";
 import { getAllStopWords } from "@/lib/stop-words";
 import { downloadPNG, downloadHTML } from "@/lib/download-snapshot";
+import { QRWithLogo } from "@/components/QRWithLogo";
 
 const BRAND_SWITCH_MS = 10_000;
+const QR_KEY = "wordtower-qr-url";
+const QR_FALLBACK = "https://t.me/YourBotUsername";
 const HEART_GLOW_KEY = "wordtower-heart-glow";
+const QR_VISIBLE_KEY = "wordtower-qr-visible";
 
 const Index = () => {
   document.title = "test";
   const { stopWords } = useStopWords();
   const mainRef = useRef<HTMLDivElement>(null);
   const [logoSize, setLogoSize] = useState(190);
+  const [qrSize, setQrSize] = useState(160);
   const [showSlogan, setShowSlogan] = useState(false);
   const [heartGlowEnabled, setHeartGlowEnabled] = useState(true);
+  const [qrVisible, setQrVisible] = useState(true);
+  const [qrUrl, setQrUrl] = useState(QR_FALLBACK);
 
   useEffect(() => {
     const readGlow = () => {
       const v = localStorage.getItem(HEART_GLOW_KEY);
       setHeartGlowEnabled(v === null ? true : v === "1");
     };
+    const readQrVisibility = () => {
+      const v = localStorage.getItem(QR_VISIBLE_KEY);
+      setQrVisible(v === null ? true : v === "1");
+    };
+    const readQrUrl = () => {
+      setQrUrl(localStorage.getItem(QR_KEY) || QR_FALLBACK);
+    };
     readGlow();
+    readQrVisibility();
+    readQrUrl();
     const onStorage = (e: StorageEvent) => {
       if (e.key === HEART_GLOW_KEY) readGlow();
+      if (e.key === QR_VISIBLE_KEY) readQrVisibility();
+      if (e.key === QR_KEY) readQrUrl();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -40,8 +58,15 @@ const Index = () => {
     const el = mainRef.current;
     if (!el) return;
     const compute = () => {
-      const side = Math.min(el.clientWidth, el.clientHeight);
+      const width = el.clientWidth;
+      const side = Math.min(width, el.clientHeight);
+      const isMobile = width < 768;
       setLogoSize(Math.max(140, Math.min(260, Math.round(side * 0.19))));
+      setQrSize(
+        isMobile
+          ? Math.max(84, Math.min(128, Math.round(side * 0.16)))
+          : Math.max(200, Math.min(360, Math.round(side * 0.3)))
+      );
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -105,10 +130,16 @@ const Index = () => {
       />
 
       {/* Tower fills the remaining screen */}
+      {qrVisible && (
+        <div className="absolute z-20 top-2 right-2 sm:top-4 sm:right-4 pointer-events-none">
+          <QRWithLogo url={qrUrl} size={qrSize} />
+        </div>
+      )}
+
       <div className="relative z-10 flex-1 min-h-0 w-full">
         <WordTower
           words={filteredWords}
-          qrSize={0}
+          qrSize={qrVisible ? qrSize : 0}
           centerLogoSize={logoSize}
           heartGlowEnabled={heartGlowEnabled}
         />

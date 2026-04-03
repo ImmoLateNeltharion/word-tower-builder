@@ -8,6 +8,7 @@ import { QRWithLogo } from "@/components/QRWithLogo";
 
 const QR_FALLBACK = 'https://t.me/YourBotUsername';
 const HEART_GLOW_KEY = "wordtower-heart-glow";
+const QR_VISIBLE_KEY = "wordtower-qr-visible";
 const BRAND_SWITCH_MS = 10_000;
 
 const Index = () => {
@@ -18,6 +19,7 @@ const Index = () => {
   const [qrSize, setQrSize] = useState(160);
   const [heartGlowEnabled, setHeartGlowEnabled] = useState(true);
   const [showSlogan, setShowSlogan] = useState(false);
+  const [qrVisible, setQrVisible] = useState(true);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -31,9 +33,15 @@ const Index = () => {
       const v = localStorage.getItem(HEART_GLOW_KEY);
       setHeartGlowEnabled(v === null ? true : v === "1");
     };
+    const readQrVisibility = () => {
+      const v = localStorage.getItem(QR_VISIBLE_KEY);
+      setQrVisible(v === null ? true : v === "1");
+    };
     readGlow();
+    readQrVisibility();
     const onStorage = (e: StorageEvent) => {
       if (e.key === HEART_GLOW_KEY) readGlow();
+      if (e.key === QR_VISIBLE_KEY) readQrVisibility();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -125,16 +133,17 @@ const Index = () => {
         style={{ background: 'radial-gradient(ellipse 56% 60% at 50% 48%, rgba(70,138,214,0.24) 0%, rgba(30,54,92,0.12) 42%, transparent 74%)' }}
       />
 
-      {/* QR code — top right, dynamic */}
-      <div className="absolute z-20 top-2 right-2 sm:top-4 sm:right-4 pointer-events-none">
-        <QRWithLogo url={qrUrl} size={qrSize} />
-      </div>
+      {qrVisible && (
+        <div className="absolute z-20 top-2 right-2 sm:top-4 sm:right-4 pointer-events-none">
+          <QRWithLogo url={qrUrl} size={qrSize} />
+        </div>
+      )}
 
       {/* Tower fills the remaining screen */}
       <div className="relative z-10 flex-1 min-h-0 w-full">
         <WordTower
           words={filteredWords}
-          qrSize={qrSize}
+          qrSize={qrVisible ? qrSize : 0}
           centerLogoSize={logoSize}
           heartGlowEnabled={heartGlowEnabled}
         />
