@@ -151,8 +151,8 @@ const Index = () => {
         <div
           style={{
             position: "relative",
-            width: `${showSlogan ? logoSize * 2.75 : logoSize * 2}px`,
-            maxWidth: showSlogan ? "56vw" : "40vw",
+            width: `${logoSize * 2.75}px`,
+            maxWidth: "56vw",
             transform: "translateY(-30%)",
             animation: "brandFadePulse 5.2s ease-in-out infinite",
           }}
@@ -161,11 +161,17 @@ const Index = () => {
             src="/vatech-logo.png"
             alt="Vatech"
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
-              height: "auto",
+              height: "100%",
+              objectFit: "contain",
+              transform: "scale(0.73)",
+              transformOrigin: "center",
               opacity: showSlogan ? 0 : 1,
-              transition: "opacity 900ms ease",
-              display: "block",
+              transition: "opacity 680ms ease",
+              willChange: "opacity, transform",
+              backfaceVisibility: "hidden",
               mixBlendMode: "normal",
               filter: "brightness(0) invert(1) contrast(1.34) drop-shadow(0 0 12px rgba(255,255,255,0.26))",
             }}
@@ -180,7 +186,9 @@ const Index = () => {
               height: "100%",
               objectFit: "contain",
               opacity: showSlogan ? 1 : 0,
-              transition: "opacity 900ms ease",
+              transition: "opacity 680ms ease",
+              willChange: "opacity",
+              backfaceVisibility: "hidden",
               filter: "brightness(0) invert(1) contrast(1.08)",
             }}
           />
