@@ -107,6 +107,8 @@ const Index = () => {
     return map;
   }, [approvedWords, stopWords]);
   const qrUrl = publicSettings?.botLink?.trim() || QR_FALLBACK;
+  const brandWidth = logoSize * 2.75;
+  const brandHeight = logoSize;
 
   return (
     <div
@@ -151,10 +153,12 @@ const Index = () => {
         <div
           style={{
             position: "relative",
-            width: `${logoSize * 2.75}px`,
+            width: `${brandWidth}px`,
+            height: `${brandHeight}px`,
             maxWidth: "56vw",
             transform: "translateY(-30%)",
             animation: "brandFadePulse 5.2s ease-in-out infinite",
+            overflow: "hidden",
           }}
         >
           <img
