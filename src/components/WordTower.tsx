@@ -62,8 +62,13 @@ const QR_SAFE_PAD_MAX = 64;
 const WORD_GAP = 1;
 const GLOBAL_FONT_SCALE = 1.34;
 const MOBILE_FONT_SCALE = 1.08;
-const SILHOUETTE_SCALE = 0.64;
-const MOBILE_SILHOUETTE_SCALE = 0.54;
+const SILHOUETTE_SCALE = 0.84;
+const MOBILE_SILHOUETTE_SCALE = 0.7;
+// Collision polygon is a razor-thin margin around the drawn silhouette so
+// words sit right against the heart edge — silhouette is read from negative
+// space between letters.
+const HEART_HOLE_INFLATE = 1.012;
+const HEART_HOLE_INFLATE_MOBILE = 1.02;
 const MAP_PAD_X = 6;
 const MAP_PAD_Y = 6;
 
@@ -280,20 +285,20 @@ function boxIntersectsHeartHole(
   box: { left: number; top: number; right: number; bottom: number },
   tr: MapTransform
 ): boolean {
-  const points: [number, number][] = [];
-  const cols = 4;
-  const rows = 3;
+  const cols = 10;
+  const rows = 7;
+  const w = box.right - box.left;
+  const h = box.bottom - box.top;
   for (let ry = 0; ry < rows; ry++) {
     for (let rx = 0; rx < cols; rx++) {
       const fx = rx / (cols - 1);
       const fy = ry / (rows - 1);
-      points.push([
-        box.left + (box.right - box.left) * fx,
-        box.top + (box.bottom - box.top) * fy,
-      ]);
+      const x = box.left + w * fx;
+      const y = box.top + h * fy;
+      if (pointInsideHeartHole(x, y, tr)) return true;
     }
   }
-  return points.some(([x, y]) => pointInsideHeartHole(x, y, tr));
+  return false;
 }
 
 // Precompute sampled outline points for distance queries
@@ -392,15 +397,19 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
       );
 
       const tr = buildMapTransform(width, height, silhouetteScale);
+      const holeInflate = isMobile ? HEART_HOLE_INFLATE_MOBILE : HEART_HOLE_INFLATE;
+      const trHole = buildMapTransform(width, height, silhouetteScale * holeInflate);
       const mapW = (tr.maxX - tr.minX) * tr.scale;
       const mapH = (tr.maxY - tr.minY) * tr.scale;
       const cx = tr.originX + mapW / 2;
       const cy = tr.originY + mapH / 2;
+      const holeMapW = (trHole.maxX - trHole.minX) * trHole.scale;
+      const holeMapH = (trHole.maxY - trHole.minY) * trHole.scale;
       const heartBounds = {
-        left: tr.originX,
-        right: tr.originX + mapW,
-        top: tr.originY,
-        bottom: tr.originY + mapH,
+        left: trHole.originX,
+        right: trHole.originX + holeMapW,
+        top: trHole.originY,
+        bottom: trHole.originY + holeMapH,
       };
 
       const hasQrArea = qrSize > 0;
@@ -456,14 +465,14 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         return sum;
       };
       const candidates: CandidatePoint[] = [];
-      const stepBase = Math.max(7, Math.min(12, Math.round(Math.min(width, height) / 64)));
+      const stepBase = Math.max(5, Math.min(9, Math.round(Math.min(width, height) / 90)));
       const step = stepBase;
       const addGrid = (ox: number, oy: number) => {
         for (let y = 6 + oy; y <= height - 6; y += step) {
           for (let x = 6 + ox; x <= width - 6; x += step) {
             if (hasQrArea && pointInsideQRArea(x, y, qrArea)) continue;
             if (hasCenterArea && pointInsideQRArea(x, y, centerArea)) continue;
-            if (pointInsideHeartHole(x, y, tr)) continue;
+            if (pointInsideHeartHole(x, y, trHole)) continue;
             candidates.push({
               x,
               y,
@@ -475,6 +484,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
       };
       addGrid(0, 0);
       addGrid(step / 2, step / 2);
+      addGrid(step / 3, (step * 2) / 3);
       if (candidates.length < 120) return [];
       const result: PlacedWord[] = [];
 
@@ -518,7 +528,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
         top: y - wordHeight / 2 - WORD_GAP,
         bottom: y + wordHeight / 2 + WORD_GAP,
       });
-      const heartSafePad = Math.max(12, Math.round(minWordSize * 0.7));
+      const heartSafePad = Math.max(2, Math.round(minWordSize * 0.08));
 
       const isBoxValid = (box: { left: number; top: number; right: number; bottom: number }) => {
         if (box.left < 3 || box.right > width - 3 || box.top < 3 || box.bottom > height - 3) return false;
@@ -538,7 +548,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
               right: box.right + heartSafePad,
               bottom: box.bottom + heartSafePad,
             },
-            tr
+            trHole
           )
         ) return false;
         if (overlapsPlaced(box)) return false;
@@ -615,7 +625,7 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
           const fontSize = Math.max(minWordSize, Math.round(baseSize * scale));
           const wordWidth = measureWordWidth(word, fontSize);
           const wordHeight = Math.ceil(fontSize * 1.14);
-          const sampleCount = Math.min(180, candidates.length);
+          const sampleCount = Math.min(420, candidates.length);
           const start = seed % candidates.length;
           const walk = coprimeStep(candidates.length, seed ^ (wi * 2654435761));
           let best: { x: number; y: number; box: { left: number; top: number; right: number; bottom: number }; score: number } | null = null;
@@ -629,9 +639,10 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
             if (!isBoxValid(box)) continue;
 
             const occ = neighborOcc(point.cell);
-            // Strongly prefer positions near the heart outline
-            const proximityScore = point.outlineDistSq * 40;
-            const score = occ * 0.15 + proximityScore;
+            // Strongly prefer positions hugging the heart outline so the
+            // silhouette is read from negative space.
+            const proximityScore = point.outlineDistSq * 220;
+            const score = occ * 0.08 + proximityScore;
             if (!best || score < best.score) best = { x, y, box, score };
           }
 
@@ -710,29 +721,22 @@ const WordTower = ({ words, qrSize = 160, centerLogoSize = 0, heartGlowEnabled =
             "radial-gradient(ellipse 72% 68% at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.08) 82%, rgba(0,0,0,0.14) 100%)",
         }}
       />
-      {heartGlowEnabled && glowOutlinePaths.length > 0 && (
+      {heartGlowEnabled && shapeOutlinePaths.length > 0 && (
         <svg
-          className="absolute inset-0 pointer-events-none heart-neon-beat"
+          className="absolute inset-0 pointer-events-none"
           width="100%"
           height="100%"
           viewBox={`0 0 ${size.width} ${size.height}`}
           preserveAspectRatio="none"
         >
-          <defs>
-            <filter id="heartGlow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="4.8" result="blurSoft" />
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="blurWide" />
-              <feMerge>
-                <feMergeNode in="blurSoft" />
-                <feMergeNode in="blurWide" />
-              </feMerge>
-            </filter>
-          </defs>
-          {glowOutlinePaths.map((path, idx) => (
-            <g key={`heart-glow-${idx}`} filter="url(#heartGlow)">
-              <path d={path} fill="none" stroke="hsl(204 58% 58% / 0.11)" strokeWidth={3.8} />
-              <path d={path} fill="none" stroke="hsl(204 60% 56% / 0.17)" strokeWidth={2.2} />
-            </g>
+          {shapeOutlinePaths.map((path, idx) => (
+            <path
+              key={`heart-rim-${idx}`}
+              d={path}
+              fill="none"
+              stroke="hsl(0 0% 100% / 0.06)"
+              strokeWidth={1}
+            />
           ))}
         </svg>
       )}
